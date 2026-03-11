@@ -229,7 +229,7 @@ io.on('connection', (socket) => {
 // app.get('/player', (req, res) => { ... });
 
 // Fallback für React Router (Gültig für HA Ingress)
-app.get(/(.*)/, (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
