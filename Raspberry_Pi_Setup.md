@@ -10,10 +10,11 @@ Diese Anleitung beschreibt, wie ein Raspberry Pi konfiguriert wird, um automatis
 1. Flashe das Raspberry Pi OS mit dem [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
 2. **WICHTIG:** Bevor du die SD-Karte in den Pi steckst, navigiere in das `bootfs` Laufwerk (die SD-Karte) an deinem Computer.
 3. Erstelle dort eine neue Datei namens **`digital_signage_url.txt`**.
-4. Schreibe die öffentliche URL deines Home Assistant Add-ons inkl. `/player` Pfad in diese Datei.
-   * Beispiel: `https://signage.deinedomain.de/player` oder `http://deine-dyndns.net:8080/player`
-   * *(Dies ist die URL, die du über NGINX Proxy Manager / Cloudflare für Port 9999 freigegeben hast)*.
-5. Speichere die Datei und stecke die SD-Karte in den Raspberry Pi.
+4. Schreibe die IP-Adresse oder Domain deines Home Assistant Servers inkl. Port `9999` und `/#/player` Pfad in diese Datei.
+5. **WICHTIG:** Nutze das Format `http://IP-ADRESSE:9999/#/player`
+    * Beispiel Lokal: `http://192.168.1.65:9999/#/player`
+    * Beispiel Extern: `https://signage.deinedomain.de/#/player` (falls über Proxy freigegeben)
+6. Speichere die Datei und stecke die SD-Karte in den Raspberry Pi.
 
 ## Schritt 2: Kiosk-Modus einrichten
 Starte den Raspberry Pi. Öffne ein Terminal und folge diesen Schritten:
