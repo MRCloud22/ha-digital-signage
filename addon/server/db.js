@@ -3,9 +3,9 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure data directory exists
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir);
+const dataDir = process.env.UPLOAD_DIR ? path.dirname(process.env.DB_PATH || '') : path.join(__dirname, 'data');
+if (dataDir && !fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
 }
 
 const dbPath = process.env.DB_PATH || path.join(dataDir, 'database.sqlite');
@@ -33,6 +33,7 @@ db.serialize(() => {
             rss_ticker_speed INTEGER DEFAULT 60,
             rss_ticker_color TEXT DEFAULT '#ffffff',
             rss_ticker_bg_color TEXT DEFAULT '#1a1a2e',
+            rss_ticker_bg_opacity INTEGER DEFAULT 90,
             rss_ticker_font_size INTEGER DEFAULT 16,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -42,6 +43,7 @@ db.serialize(() => {
     db.run(`ALTER TABLE playlists ADD COLUMN rss_ticker_speed INTEGER DEFAULT 60`, () => { });
     db.run(`ALTER TABLE playlists ADD COLUMN rss_ticker_color TEXT DEFAULT '#ffffff'`, () => { });
     db.run(`ALTER TABLE playlists ADD COLUMN rss_ticker_bg_color TEXT DEFAULT '#1a1a2e'`, () => { });
+    db.run(`ALTER TABLE playlists ADD COLUMN rss_ticker_bg_opacity INTEGER DEFAULT 90`, () => { });
     db.run(`ALTER TABLE playlists ADD COLUMN rss_ticker_font_size INTEGER DEFAULT 16`, () => { });
 
     db.run(`

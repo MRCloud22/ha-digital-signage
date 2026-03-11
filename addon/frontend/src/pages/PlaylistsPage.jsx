@@ -72,6 +72,7 @@ function PlaylistsPage() {
             rssTickerSpeed: editingPlaylist.rss_ticker_speed,
             rssTickerColor: editingPlaylist.rss_ticker_color,
             rssTickerBgColor: editingPlaylist.rss_ticker_bg_color,
+            rssTickerBgOpacity: editingPlaylist.rss_ticker_bg_opacity ?? 90,
             rssTickerFontSize: editingPlaylist.rss_ticker_font_size,
         });
         setEditingPlaylist(null);
@@ -335,15 +336,32 @@ function PlaylistsPage() {
                                     <label>Scrollgeschwindigkeit (px/s)</label>
                                     <input className="form-control" type="number" min="10" max="300" value={editingPlaylist.rss_ticker_speed || 60} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_speed: parseInt(e.target.value) })} />
                                 </div>
+                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <label>Hintergrund-Transparenz: <strong>{editingPlaylist.rss_ticker_bg_opacity ?? 90}%</strong></label>
+                                    <input type="range" min="0" max="100" value={editingPlaylist.rss_ticker_bg_opacity ?? 90}
+                                        onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_bg_opacity: parseInt(e.target.value) })}
+                                        style={{ width: '100%', cursor: 'pointer' }}
+                                    />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                        <span>0% (durchsichtig)</span><span>100% (voll)</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {editingPlaylist.rss_ticker_url && (
-                                <div style={{ padding: '10px 14px', borderRadius: '8px', background: editingPlaylist.rss_ticker_bg_color || '#1a1a2e', marginBottom: '12px' }}>
-                                    <span style={{ color: editingPlaylist.rss_ticker_color || '#ffffff', fontSize: `${editingPlaylist.rss_ticker_font_size || 16}px` }}>
-                                        ▶ RSS Ticker Vorschau – Hier scrollt der Nachrichtentext durch...
-                                    </span>
-                                </div>
-                            )}
+                            {editingPlaylist.rss_ticker_url && (() => {
+                                const op = (editingPlaylist.rss_ticker_bg_opacity ?? 90) / 100;
+                                const bg = editingPlaylist.rss_ticker_bg_color || '#1a1a2e';
+                                // Convert hex + opacity to rgba
+                                const r = parseInt(bg.slice(1, 3), 16), g = parseInt(bg.slice(3, 5), 16), b = parseInt(bg.slice(5, 7), 16);
+                                const previewBg = `rgba(${r},${g},${b},${op})`;
+                                return (
+                                    <div style={{ padding: '10px 14px', borderRadius: '8px', background: previewBg, marginBottom: '12px', overflow: 'hidden' }}>
+                                        <span style={{ color: editingPlaylist.rss_ticker_color || '#ffffff', fontSize: `${editingPlaylist.rss_ticker_font_size || 16}px`, whiteSpace: 'nowrap' }}>
+                                            ▶ RSS Ticker Vorschau – Hier scrollt der Nachrichtentext durch...
+                                        </span>
+                                    </div>
+                                );
+                            })()}
 
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-secondary" onClick={() => setEditingPlaylist(null)}>Abbrechen</button>

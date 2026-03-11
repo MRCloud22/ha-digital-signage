@@ -1,6 +1,6 @@
 name: "Digital Signage Server"
 description: "Manage screens and playlists for Raspberry Pi digital signage clients."
-version: "1.0.5"
+version: "1.0.6"
 slug: "digital_signage_server"
 init: false
 arch:
@@ -10,10 +10,8 @@ arch:
   - armv7
   - i386
 map:
-  - 8099:8099
-  - 9999:9999
+  - data:rw
 ports:
-  8099/tcp: 8099
   9999/tcp: 9999
 panel_icon: "mdi:monitor-dashboard"
 panel_title: "Digital Signage"

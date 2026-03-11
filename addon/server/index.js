@@ -26,7 +26,7 @@ const frontendPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendPath));
 
 // Configure Multer for file uploads
-const uploadDir = path.join(__dirname, 'data/uploads');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'data/uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -145,6 +145,13 @@ app.put('/api/screens/:id', (req, res) => {
     );
 });
 
+app.delete('/api/screens/:id', (req, res) => {
+    db.run(`DELETE FROM screens WHERE id = ?`, [req.params.id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
 // 2. Playlists
 app.get('/api/playlists', (req, res) => {
     db.all(`SELECT * FROM playlists`, [], (err, rows) => {
@@ -154,11 +161,11 @@ app.get('/api/playlists', (req, res) => {
 });
 
 app.post('/api/playlists', (req, res) => {
-    const { name, rssTickerUrl, rssTickerSpeed, rssTickerColor, rssTickerBgColor, rssTickerFontSize } = req.body;
+    const { name, rssTickerUrl, rssTickerSpeed, rssTickerColor, rssTickerBgColor, rssTickerBgOpacity, rssTickerFontSize } = req.body;
     const id = uuidv4();
     db.run(
-        `INSERT INTO playlists (id, name, rss_ticker_url, rss_ticker_speed, rss_ticker_color, rss_ticker_bg_color, rss_ticker_font_size) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, name, rssTickerUrl || null, rssTickerSpeed || 60, rssTickerColor || '#ffffff', rssTickerBgColor || '#1a1a2e', rssTickerFontSize || 16],
+        `INSERT INTO playlists (id, name, rss_ticker_url, rss_ticker_speed, rss_ticker_color, rss_ticker_bg_color, rss_ticker_bg_opacity, rss_ticker_font_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, name, rssTickerUrl || null, rssTickerSpeed || 60, rssTickerColor || '#ffffff', rssTickerBgColor || '#1a1a2e', rssTickerBgOpacity ?? 90, rssTickerFontSize || 16],
         (err) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ id, name });
@@ -167,10 +174,10 @@ app.post('/api/playlists', (req, res) => {
 });
 
 app.put('/api/playlists/:id', (req, res) => {
-    const { name, rssTickerUrl, rssTickerSpeed, rssTickerColor, rssTickerBgColor, rssTickerFontSize } = req.body;
+    const { name, rssTickerUrl, rssTickerSpeed, rssTickerColor, rssTickerBgColor, rssTickerBgOpacity, rssTickerFontSize } = req.body;
     db.run(
-        `UPDATE playlists SET name = ?, rss_ticker_url = ?, rss_ticker_speed = ?, rss_ticker_color = ?, rss_ticker_bg_color = ?, rss_ticker_font_size = ? WHERE id = ?`,
-        [name, rssTickerUrl || null, rssTickerSpeed || 60, rssTickerColor || '#ffffff', rssTickerBgColor || '#1a1a2e', rssTickerFontSize || 16, req.params.id],
+        `UPDATE playlists SET name = ?, rss_ticker_url = ?, rss_ticker_speed = ?, rss_ticker_color = ?, rss_ticker_bg_color = ?, rss_ticker_bg_opacity = ?, rss_ticker_font_size = ? WHERE id = ?`,
+        [name, rssTickerUrl || null, rssTickerSpeed || 60, rssTickerColor || '#ffffff', rssTickerBgColor || '#1a1a2e', rssTickerBgOpacity ?? 90, rssTickerFontSize || 16, req.params.id],
         function (err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ success: true });
