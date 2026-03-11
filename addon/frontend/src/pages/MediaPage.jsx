@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Upload, Link as LinkIcon, Image as ImageIcon, Video, FileText, Globe } from 'lucide-react';
 
-const API_URL = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/api';
+const API_URL = window.location.origin + '/api';
 
 function MediaPage() {
     const [media, setMedia] = useState([]);
