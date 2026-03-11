@@ -223,8 +223,15 @@ io.on('connection', (socket) => {
     });
 });
 
+// ... (vorheriger Code bleibt unverändert)
+
 // Basic route for serving the player (if we decide to host the player on the server as well)
 // app.get('/player', (req, res) => { ... });
+
+// Fallback für React Router (Gültig für HA Ingress)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+});
 
 server.listen(PORT, () => {
     console.log(`Digital Signage Server running on port ${PORT}`);

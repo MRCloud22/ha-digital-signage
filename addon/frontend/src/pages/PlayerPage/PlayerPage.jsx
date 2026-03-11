@@ -3,7 +3,8 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import './Player.css';
 
-const SERVER_URL = 'http://localhost:9999';
+// Dynamically use the same host for API calls (useful for HA ingress)
+const SERVER_URL = window.location.origin + window.location.pathname.replace(/\/player.*/, '');
 const API_URL = `${SERVER_URL}/api`;
 
 function PlayerPage() {

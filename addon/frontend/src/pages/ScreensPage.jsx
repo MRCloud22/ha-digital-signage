@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Link2 } from 'lucide-react';
+import { Monitor, KeyRound, MonitorPlay, Trash2 } from 'lucide-react';
 
-const API_URL = 'http://localhost:9999/api';
+const API_URL = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/api';
 
 function ScreensPage() {
     const [screens, setScreens] = useState([]);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ListVideo, Plus, Link as LinkIcon } from 'lucide-react';
 
-const API_URL = 'http://localhost:9999/api';
+const API_URL = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/api';
 
 function PlaylistsPage() {
     const [playlists, setPlaylists] = useState([]);
