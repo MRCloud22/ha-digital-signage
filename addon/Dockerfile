@@ -15,8 +15,11 @@ COPY server/package*.json ./server/
 COPY server/ ./server/
 COPY frontend/ ./frontend/
 
-# Install dependencies
+# Install server dependencies
 RUN cd server && npm install
+
+# Install frontend dependencies and build React app
+RUN cd frontend && npm install && npm run build
 
 # Copy run script
 COPY run.sh /
