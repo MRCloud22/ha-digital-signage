@@ -59,6 +59,7 @@ body.player-mode,
 .ticker-content {
     display: inline-block;
     padding-left: 100vw;
+    white-space: nowrap;
     animation: ticker-slide linear infinite;
     will-change: transform;
 }

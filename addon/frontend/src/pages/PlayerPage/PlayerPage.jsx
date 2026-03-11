@@ -24,7 +24,8 @@ function parseRssItems(xmlString) {
         const items = doc.querySelectorAll('item');
         const titles = [];
         items.forEach(item => {
-            const title = item.querySelector('title')?.textContent?.trim();
+            const raw = item.querySelector('title')?.textContent || '';
+            const title = raw.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
             if (title) titles.push(title);
         });
         return titles;
