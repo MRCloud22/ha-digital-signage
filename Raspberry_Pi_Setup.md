@@ -4,19 +4,38 @@ Diese Anleitung beschreibt, wie ein Raspberry Pi konfiguriert wird, um automatis
 
 ## Voraussetzungen
 * Ein Raspberry Pi (Empfohlen: Pi 3 B+ oder Pi 4)
-* Eine SD-Karte mit **Raspberry Pi OS (mit Desktop)** (nicht "Lite", da ein Webbrowser benötigt wird).
+* Eine SD-Karte (mind. 8GB)
+* **Zwei Wege zur Installation:**
+    1. **Der schnelle Weg:** Nutze **FullPageOS** (vorkonfigurierter Kiosk-Modus).
+    2. **Der manuelle Weg:** Nutze das Standard **Raspberry Pi OS** (falls du mehr Kontrolle brauchst).
 
-## Schritt 1: SD-Karte flashen & config.txt erstellen
-1. Flashe das Raspberry Pi OS mit dem [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
-2. **WICHTIG:** Bevor du die SD-Karte in den Pi steckst, navigiere in das `bootfs` Laufwerk (die SD-Karte) an deinem Computer.
-3. Erstelle dort eine neue Datei namens **`digital_signage_url.txt`**.
-4. Schreibe die IP-Adresse oder Domain deines Home Assistant Servers inkl. Port `9999` und `/#/player` Pfad in diese Datei.
-5. **WICHTIG:** Nutze das Format `http://IP-ADRESSE:9999/#/player`
-    * Beispiel Lokal: `http://192.168.1.65:9999/#/player`
-    * Beispiel Extern: `https://signage.deinedomain.de/#/player` (falls über Proxy freigegeben)
-6. Speichere die Datei und stecke die SD-Karte in den Raspberry Pi.
+---
 
-## Schritt 2: Kiosk-Modus einrichten
+## Option A: Der schnelle Weg (FullPageOS) – EMPFOHLEN
+FullPageOS ist ein minimales System, das direkt in einen Webbrowser bootet.
+
+1. Öffne den **Raspberry Pi Imager**.
+2. Klicke auf **"OS wählen"** -> **"Other specific-purpose OS"** -> **"FullPageOS"**.
+3. Wähle deine SD-Karte und klicke auf **"Schreiben"**.
+4. **WICHTIG:** Bevor du die Karte in den Pi steckst, navigiere am PC in das `bootfs` Laufwerk (die SD-Karte).
+5. Suche die Datei **`fullpageos.txt`** und öffne sie.
+6. Ersetze den Inhalt durch deine Add-on URL:
+   `http://192.168.1.65:9999/#/player`
+7. Speichere die Datei, stecke die Karte in den Pi und starte ihn.
+8. Fahre fort mit **Schritt 3 (Pairing)**.
+
+---
+
+## Option B: Der manuelle Weg (Standard RPi OS)
+Falls du FullPageOS nicht nutzen möchtest, kannst du ein Standard-System aufsetzen:
+
+### Schritt 1: SD-Karte flashen & URL hinterlegen
+1. Flashe **Raspberry Pi OS (mit Desktop)** via Imager.
+2. Erstelle auf der SD-Karte (`bootfs`) eine Datei namens **`digital_signage_url.txt`**.
+3. Schreibe die IP deines Servers rein: `http://192.168.1.65:9999/#/player`
+4. Stecke die Karte in den Pi.
+
+### Schritt 2: Kiosk-Modus manuell einrichten
 Starte den Raspberry Pi. Öffne ein Terminal und folge diesen Schritten:
 
 1. **Abhängigkeiten installieren:**

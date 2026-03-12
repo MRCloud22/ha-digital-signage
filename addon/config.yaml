@@ -1,6 +1,6 @@
 name: "Digital Signage Server"
 description: "Manage screens and playlists for Raspberry Pi digital signage clients."
-version: "1.0.7"
+version: "1.0.8"
 slug: "digital_signage_server"
 init: false
 arch:
@@ -16,7 +16,7 @@ ports:
 panel_icon: "mdi:monitor-dashboard"
 panel_title: "Digital Signage"
 ingress: true
-ingress_port: 8099
+ingress_port: 9999
 ingress_stream: true
 apparmor: true
 host_network: true
