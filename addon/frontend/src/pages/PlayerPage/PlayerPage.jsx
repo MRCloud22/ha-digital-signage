@@ -34,55 +34,49 @@ function parseRssItems(xmlString) {
     }
 }
 
-function PlayerPage() {
-    const [isPaired, setIsPaired] = useState(false);
-    const [pairingCode, setPairingCode] = useState('');
-    const [screenToken, setScreenToken] = useState(localStorage.getItem('screen_token') || null);
-
+// ----------------------------------------------------------------------------
+// SingleZoneRenderer: Handles playback of a single Playlist.
+// Used for the legacy full-screen playlist OR inside a specific Layout Zone.
+// ----------------------------------------------------------------------------
+const SingleZoneRenderer = ({ playlistId, playlistsData }) => {
     const [mediaItems, setMediaItems] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // Ticker state – tracks the CURRENT item's source playlist config
-    const [activeTicker, setActiveTicker] = useState(null); // playlist config object or null
-    const [rssTexts, setRssTexts] = useState({}); // map: playlistId -> rssText string
+    const [activeTicker, setActiveTicker] = useState(null); 
+    const [rssTexts, setRssTexts] = useState({}); 
     const rssTimers = useRef({});
-
-    const socketRef = useRef(null);
     const timerRef = useRef(null);
 
-    // --- PLAYLIST FLATTENING ---
-    // Each flat item carries the ticker config of its direct source playlist
-    const flattenPlaylist = useCallback(async (playlistId, visited = new Set()) => {
-        if (visited.has(playlistId)) return [];
-        visited.add(playlistId);
+    const flattenPlaylist = useCallback(async (pid, visited = new Set()) => {
+        if (!pid) return [];
+        if (visited.has(pid)) return [];
+        visited.add(pid);
 
-        const [itemsRes, playlistsRes] = await Promise.all([
-            axios.get(`${API_URL}/playlists/${playlistId}/items`),
-            axios.get(`${API_URL}/playlists`),
-        ]);
+        try {
+            const itemsRes = await axios.get(`${API_URL}/playlists/${pid}/items`);
+            const items = itemsRes.data;
+            const flatItems = [];
 
-        const items = itemsRes.data;
-        const allPlaylists = playlistsRes.data;
-        const flatItems = [];
-
-        for (const item of items) {
-            if (item.sub_playlist_id) {
-                const subPl = allPlaylists.find(p => p.id === item.sub_playlist_id);
-                const subItems = await flattenPlaylist(item.sub_playlist_id, visited);
-                // Tag each subItem with the sub-playlist's ticker config
-                subItems.forEach(si => flatItems.push({ ...si, _sourcePlaylist: subPl }));
-            } else {
-                flatItems.push({
-                    ...item,
-                    duration: item.duration_override || item.duration || 10,
-                    _sourcePlaylist: allPlaylists.find(p => p.id === playlistId),
-                });
+            for (const item of items) {
+                if (item.sub_playlist_id) {
+                    const subPl = playlistsData.find(p => p.id === item.sub_playlist_id);
+                    const subItems = await flattenPlaylist(item.sub_playlist_id, visited);
+                    subItems.forEach(si => flatItems.push({ ...si, _sourcePlaylist: subPl }));
+                } else {
+                    flatItems.push({
+                        ...item,
+                        duration: item.duration_override || item.duration || 10,
+                        _sourcePlaylist: playlistsData.find(p => p.id === pid),
+                    });
+                }
             }
+            return flatItems;
+        } catch (err) {
+            console.error('Error fetching playlist items:', err);
+            return [];
         }
-        return flatItems;
-    }, []);
+    }, [playlistsData]);
 
-    // --- RSS LOADING ---
     const loadRss = useCallback(async (pl) => {
         if (!pl?.rss_ticker_url) return;
         try {
@@ -98,12 +92,11 @@ function PlayerPage() {
 
     const scheduleRssForPlaylist = useCallback((pl) => {
         if (!pl?.rss_ticker_url) return;
-        if (rssTimers.current[pl.id]) return; // already scheduled
+        if (rssTimers.current[pl.id]) return;
         loadRss(pl);
         rssTimers.current[pl.id] = setInterval(() => loadRss(pl), 5 * 60 * 1000);
     }, [loadRss]);
 
-    // --- ACTIVE TICKER: update when current media item changes ---
     useEffect(() => {
         if (!mediaItems.length) return;
         const item = mediaItems[currentIndex];
@@ -116,130 +109,64 @@ function PlayerPage() {
         }
     }, [currentIndex, mediaItems, scheduleRssForPlaylist]);
 
-    // --- FETCH PLAYLIST FROM SERVER, BUILD FLAT LIST ---
-    const fetchActivePlaylist = useCallback(async () => {
-        try {
-            const screensRes = await axios.get(`${API_URL}/screens`);
-            const me = screensRes.data.find(s => s.id === localStorage.getItem('screen_id'));
-
-            if (me?.active_playlist_id) {
-                // Get the top-level playlist (for reference)
-                const plRes = await axios.get(`${API_URL}/playlists`);
-                const topPl = plRes.data.find(p => p.id === me.active_playlist_id);
-
-                const flat = await flattenPlaylist(me.active_playlist_id);
-
-                // Pre-load RSS for all unique source playlists with ticker URLs
-                const seen = new Set();
-                flat.forEach(item => {
-                    const pl = item._sourcePlaylist;
-                    if (pl?.rss_ticker_url && !seen.has(pl.id)) {
-                        seen.add(pl.id);
-                        scheduleRssForPlaylist(pl);
-                    }
-                });
-                // Also pre-load top-level playlist ticker
-                if (topPl?.rss_ticker_url && !seen.has(topPl.id)) {
-                    scheduleRssForPlaylist(topPl);
-                }
-
-                // Tag items from the top-level playlist that aren't sub-playlist items
-                const taggedFlat = flat.map(item => ({
-                    ...item,
-                    _sourcePlaylist: item._sourcePlaylist || topPl,
-                }));
-
-                setMediaItems(taggedFlat);
-                setCurrentIndex(0);
-            } else {
-                setMediaItems([]);
-                setActiveTicker(null);
+    // Fetch and flatten the playlist whenever playlistId changes
+    useEffect(() => {
+        let isMounted = true;
+        const init = async () => {
+            if (!playlistId) {
+                if (isMounted) setMediaItems([]);
+                return;
             }
-        } catch (err) {
-            console.error('Fehler beim Laden der Playlist', err);
-        }
-    }, [flattenPlaylist, scheduleRssForPlaylist]);
+            
+            const topPl = playlistsData.find(p => p.id === playlistId);
+            const flat = await flattenPlaylist(playlistId);
+            
+            if (!isMounted) return;
 
-    // --- PAIRING & SOCKETS ---
-    useEffect(() => {
-        document.body.classList.add('player-mode');
-        if (screenToken) {
-            setIsPaired(true);
-            connectWebSocket();
-            fetchActivePlaylist();
-        } else {
-            startPairingProcess();
-        }
-        return () => {
-            document.body.classList.remove('player-mode');
-            if (socketRef.current) socketRef.current.disconnect();
-            if (timerRef.current) clearTimeout(timerRef.current);
-            Object.values(rssTimers.current).forEach(clearInterval);
+            const seen = new Set();
+            flat.forEach(item => {
+                const pl = item._sourcePlaylist;
+                if (pl?.rss_ticker_url && !seen.has(pl.id)) {
+                    seen.add(pl.id);
+                    scheduleRssForPlaylist(pl);
+                }
+            });
+            if (topPl?.rss_ticker_url && !seen.has(topPl.id)) {
+                scheduleRssForPlaylist(topPl);
+            }
+
+            const taggedFlat = flat.map(item => ({
+                ...item,
+                _sourcePlaylist: item._sourcePlaylist || topPl,
+            }));
+
+            setMediaItems(taggedFlat);
+            setCurrentIndex(0);
         };
-    }, [screenToken]);
+        init();
 
-    // Advance media timer
+        return () => {
+            isMounted = false;
+            Object.values(rssTimers.current).forEach(clearInterval);
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, [playlistId, flattenPlaylist, playlistsData, scheduleRssForPlaylist]);
+
+    // Timer logic for images/documents
     useEffect(() => {
-        if (!mediaItems.length || !isPaired) return;
+        if (!mediaItems.length) return;
         const item = mediaItems[currentIndex];
         if (item.type !== 'video') {
             const duration = (item.duration || 10) * 1000;
             timerRef.current = setTimeout(() => setCurrentIndex(prev => (prev + 1) % mediaItems.length), duration);
         }
         return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-    }, [currentIndex, mediaItems, isPaired]);
-
-    const startPairingProcess = async () => {
-        try {
-            const browserInfo = navigator.userAgent.substring(0, 20);
-            const res = await axios.post(`${API_URL}/screens/pair`, { name: `Screen (${browserInfo})` });
-            setPairingCode(res.data.pairingCode);
-            const socket = io(SERVER_URL);
-            socket.on('paired', (data) => {
-                if (data.screenId === res.data.id && data.token) {
-                    localStorage.setItem('screen_token', data.token);
-                    localStorage.setItem('screen_id', data.screenId);
-                    setScreenToken(data.token);
-                    socket.disconnect();
-                }
-            });
-        } catch (err) {
-            console.error('Pairing-Fehler:', err);
-        }
-    };
-
-    const connectWebSocket = () => {
-        const socket = io(SERVER_URL);
-        socketRef.current = socket;
-        socket.on('connect', () => socket.emit('authenticate', screenToken));
-        socket.on('playlist_changed', fetchActivePlaylist);
-        socket.on('auth_error', () => {
-            localStorage.removeItem('screen_token');
-            localStorage.removeItem('screen_id');
-            setScreenToken(null);
-            setIsPaired(false);
-        });
-    };
-
-    // --- RENDERING ---
-    if (!isPaired) {
-        return (
-            <div className="player-container pairing-screen">
-                <div className="pairing-box">
-                    <h2>Screen Setup</h2>
-                    <p>Öffne das Dashboard und gib diesen Code unter „Screens" ein.</p>
-                    <div className="pairing-code">{pairingCode || 'LÄDT...'}</div>
-                    <p style={{ color: '#a0aec0' }}>Dashboard: {SERVER_URL}</p>
-                </div>
-            </div>
-        );
-    }
+    }, [currentIndex, mediaItems]);
 
     if (!mediaItems.length) {
         return (
-            <div className="player-container pairing-screen">
-                <h2 style={{ color: 'white' }}>Verbunden ✓</h2>
-                <p style={{ color: '#a0aec0' }}>Warte auf zugewiesene Playlist...</p>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-transparent">
+                <p style={{ color: '#a0aec0', padding: '20px', textAlign: 'center' }}>Zone wartet auf Inhalte...</p>
             </div>
         );
     }
@@ -257,9 +184,9 @@ function PlayerPage() {
             case 'image':
                 return <img key={media.id + currentIndex} src={getMediaUrl(media.filepath)} alt={media.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
             case 'video':
-                return <video key={media.id + currentIndex} src={getMediaUrl(media.filepath)} autoPlay muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} onEnded={() => setCurrentIndex(prev => (prev + 1) % mediaItems.length)} />;
+                return <video key={media.id + currentIndex} src={getMediaUrl(media.filepath)} autoPlay muted style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} onEnded={() => setCurrentIndex(prev => (prev + 1) % mediaItems.length)} />;
             case 'document':
-                return <iframe key={media.id + currentIndex} src={`${getMediaUrl(media.filepath)}#toolbar=0&navpanes=0&scrollbar=0`} title={media.name} className="pdf-container" />;
+                return <iframe key={media.id + currentIndex} src={`${getMediaUrl(media.filepath)}#toolbar=0&navpanes=0&scrollbar=0`} title={media.name} style={{ width: '100%', height: '100%', border: 'none' }} />;
             case 'webpage':
                 return <iframe key={media.id + currentIndex} src={media.url} title={media.name} style={{ width: '100%', height: '100%', border: 'none' }} />;
             default:
@@ -267,7 +194,6 @@ function PlayerPage() {
         }
     };
 
-    // Ticker rendering from activeTicker (the source playlist of the current item)
     const renderTicker = () => {
         if (!activeTicker?.rss_ticker_url) return null;
         const text = rssTexts[activeTicker.id];
@@ -282,7 +208,7 @@ function PlayerPage() {
         const duration = estimatedWidth / speed;
 
         return (
-            <div className="ticker-container" style={{ background: hexToRgba(bgColor, opacity), height: `${fontSize * 2.5}px` }}>
+            <div className="ticker-container" style={{ background: hexToRgba(bgColor, opacity), height: `${fontSize * 2.5}px`, position: 'absolute', bottom: 0, width: '100%', zIndex: 100 }}>
                 <div className="ticker-content" style={{ color, fontSize: `${fontSize}px`, animationDuration: `${duration}s` }}>
                     {text}
                 </div>
@@ -291,11 +217,176 @@ function PlayerPage() {
     };
 
     return (
-        <div className="player-container">
-            <div className="media-layer">
+        <div className="w-full h-full relative" style={{ overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {renderMedia(currentMedia)}
             </div>
             {renderTicker()}
+        </div>
+    );
+};
+
+
+// ----------------------------------------------------------------------------
+// Main Player Page
+// ----------------------------------------------------------------------------
+function PlayerPage() {
+    const [isPaired, setIsPaired] = useState(false);
+    const [pairingCode, setPairingCode] = useState('');
+    const [screenToken, setScreenToken] = useState(localStorage.getItem('screen_token') || null);
+
+    const [screenData, setScreenData] = useState(null);
+    const [layout, setLayout] = useState(null);
+    const [playlistsData, setPlaylistsData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const socketRef = useRef(null);
+
+    // Fetch the active configuration for this screen
+    const fetchScreenConfig = useCallback(async () => {
+        try {
+            setLoading(true);
+            const myId = localStorage.getItem('screen_id');
+            if (!myId) return;
+
+            const [screensRes, playlistsRes] = await Promise.all([
+                axios.get(`${API_URL}/screens`),
+                axios.get(`${API_URL}/playlists`)
+            ]);
+
+            const me = screensRes.data.find(s => s.id === myId);
+            setScreenData(me);
+            setPlaylistsData(playlistsRes.data);
+
+            if (me?.active_layout_id) {
+                const layoutRes = await axios.get(`${API_URL}/layouts/${me.active_layout_id}`);
+                setLayout(layoutRes.data);
+            } else {
+                setLayout(null);
+            }
+        } catch (err) {
+            console.error('Failed to load screen config:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // --- PAIRING & SOCKETS ---
+    useEffect(() => {
+        document.body.classList.add('player-mode');
+        if (screenToken) {
+            setIsPaired(true);
+            connectWebSocket();
+            fetchScreenConfig();
+        } else {
+            startPairingProcess();
+        }
+        return () => {
+            document.body.classList.remove('player-mode');
+            if (socketRef.current) socketRef.current.disconnect();
+        };
+        // eslint-disable-next-line
+    }, [screenToken]);
+
+    const startPairingProcess = async () => {
+        try {
+            const browserInfo = navigator.userAgent.substring(0, 20);
+            const res = await axios.post(`${API_URL}/screens/pair`, { name: `Screen (${browserInfo})` });
+            setPairingCode(res.data.pairingCode);
+            const socket = io(SERVER_URL);
+            socket.on('paired', (data) => {
+                if (data.screenId === res.data.id && data.token) {
+                    localStorage.setItem('screen_token', data.token);
+                    localStorage.setItem('screen_id', data.screenId);
+                    setScreenToken(data.token);
+                    socket.disconnect();
+                }
+            });
+        } catch (err) {
+            console.error('Pairing Error:', err);
+        }
+    };
+
+    const connectWebSocket = () => {
+        const socket = io(SERVER_URL);
+        socketRef.current = socket;
+        socket.on('connect', () => socket.emit('authenticate', screenToken));
+        
+        // Listen for changes
+        socket.on('playlist_changed', fetchScreenConfig);
+        socket.on('layout_changed', fetchScreenConfig);
+        
+        socket.on('auth_error', () => {
+            localStorage.removeItem('screen_token');
+            localStorage.removeItem('screen_id');
+            setScreenToken(null);
+            setIsPaired(false);
+        });
+    };
+
+    // --- RENDERING ROUTER ---
+    if (!isPaired) {
+        return (
+            <div className="player-container pairing-screen">
+                <div className="pairing-box">
+                    <h2>Screen Setup</h2>
+                    <p>Öffne das Dashboard und gib diesen Code unter „Screens" ein.</p>
+                    <div className="pairing-code">{pairingCode || 'LÄDT...'}</div>
+                    <p style={{ color: '#a0aec0' }}>Dashboard: {SERVER_URL}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="player-container pairing-screen">
+                <p style={{ color: '#a0aec0' }}>Lade Konfiguration...</p>
+            </div>
+        );
+    }
+
+    // Logic: 
+    // If layout is assigned, render layout zones.
+    // Else if playlist is assigned, render single full-screen playlist.
+    // Else show waiting screen.
+
+    if (screenData?.active_layout_id && layout) {
+        return (
+            <div className="player-container relative w-full h-full" style={{ backgroundColor: layout.bg_color || '#000' }}>
+                {layout.zones?.map(zone => (
+                    <div 
+                        key={zone.id} 
+                        style={{
+                            position: 'absolute',
+                            left: `${zone.x_percent}%`,
+                            top: `${zone.y_percent}%`,
+                            width: `${zone.width_percent}%`,
+                            height: `${zone.height_percent}%`,
+                            zIndex: zone.z_index || 10,
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <SingleZoneRenderer playlistId={zone.playlist_id} playlistsData={playlistsData} />
+                    </div>
+                ))}
+            </div>
+        );
+    } else if (screenData?.active_playlist_id) {
+        return (
+            <div className="player-container relative w-full h-full" style={{ backgroundColor: '#000' }}>
+                <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
+                    <SingleZoneRenderer playlistId={screenData.active_playlist_id} playlistsData={playlistsData} />
+                </div>
+            </div>
+        );
+    }
+
+    // Fallback: No layout and no playlist
+    return (
+        <div className="player-container pairing-screen">
+            <h2 style={{ color: 'white' }}>Verbunden ✓</h2>
+            <p style={{ color: '#a0aec0' }}>Warte auf zugewiesenes Layout oder Playlist...</p>
         </div>
     );
 }

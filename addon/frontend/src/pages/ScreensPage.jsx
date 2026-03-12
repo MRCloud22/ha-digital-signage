@@ -1,72 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Monitor, Plus, Link2, Trash2, RefreshCw } from 'lucide-react';
+import { Monitor, RefreshCw, Smartphone, Trash2, LayoutDashboard, ListVideo } from 'lucide-react';
 
-const API_URL = window.location.origin + '/api';
-
-function ScreensPage() {
+const ScreensPage = () => {
     const [screens, setScreens] = useState([]);
     const [playlists, setPlaylists] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [layouts, setLayouts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
     const [pairingCode, setPairingCode] = useState('');
-    const [error, setError] = useState('');
+    const [isPairing, setIsPairing] = useState(false);
+    const [pairingError, setPairingError] = useState('');
 
     useEffect(() => {
-        fetchScreens();
-        fetchPlaylists();
+        fetchData();
         // Auto-refresh screen list every 30s to update "last seen"
         const interval = setInterval(fetchScreens, 30000);
         return () => clearInterval(interval);
     }, []);
 
+    const fetchData = async () => {
+        try {
+            const [screensRes, playlistsRes, layoutsRes] = await Promise.all([
+                axios.get('/api/screens'),
+                axios.get('/api/playlists'),
+                axios.get('/api/layouts')
+            ]);
+            setScreens(screensRes.data);
+            setPlaylists(playlistsRes.data);
+            setLayouts(layoutsRes.data);
+            setLoading(false);
+        } catch (err) {
+            console.error('Failed to fetch data', err);
+            setLoading(false);
+        }
+    };
+
     const fetchScreens = async () => {
         try {
-            const res = await axios.get(`${API_URL}/screens`);
+            const res = await axios.get('/api/screens');
             setScreens(res.data);
         } catch (err) {
             console.error('Fehler beim Laden der Screens', err);
         }
     };
 
-    const fetchPlaylists = async () => {
+    const updateScreen = async (id, name, active_playlist_id, active_layout_id) => {
         try {
-            const res = await axios.get(`${API_URL}/playlists`);
-            setPlaylists(res.data);
+            await axios.put(`/api/screens/${id}`, { name, active_playlist_id, active_layout_id });
+            // Optimistic update
+            setScreens(screens.map(s => s.id === id ? { ...s, name, active_playlist_id, active_layout_id } : s));
         } catch (err) {
-            console.error('Fehler beim Laden der Playlisten', err);
+            console.error('Failed to update screen', err);
         }
     };
 
     const handlePairing = async (e) => {
         e.preventDefault();
-        setError('');
+        setPairingError('');
         try {
-            await axios.post(`${API_URL}/screens/confirm`, { pairingCode });
-            setIsModalOpen(false);
+            await axios.post('/api/screens/confirm', { pairingCode });
+            setIsPairing(false);
             setPairingCode('');
-            fetchScreens();
+            fetchData(); // Refresh all data after pairing
         } catch (err) {
-            setError(err.response?.data?.error || 'Koppelung fehlgeschlagen. Ist der Code korrekt?');
-        }
-    };
-
-    const assignPlaylist = async (screenId, playlistId, currentName) => {
-        try {
-            await axios.put(`${API_URL}/screens/${screenId}`, {
-                name: currentName,
-                active_playlist_id: playlistId || null,
-            });
-            fetchScreens();
-        } catch (err) {
-            console.error('Fehler beim Zuweisen der Playlist', err);
+            setPairingError(err.response?.data?.error || 'Koppelung fehlgeschlagen. Ist der Code korrekt?');
         }
     };
 
     const deleteScreen = async (screenId, name) => {
         if (!window.confirm(`Screen "${name}" wirklich löschen?`)) return;
         try {
-            await axios.delete(`${API_URL}/screens/${screenId}`);
-            fetchScreens();
+            await axios.delete(`/api/screens/${screenId}`);
+            fetchData(); // Refresh all data after deletion
         } catch (err) {
             console.error('Fehler beim Löschen des Screens', err);
         }
@@ -85,17 +91,21 @@ function ScreensPage() {
             <div className="page-header">
                 <h1>Screens (Raspberry Pis)</h1>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn btn-secondary" onClick={fetchScreens} title="Aktualisieren">
+                    <button className="btn btn-secondary" onClick={fetchData} title="Aktualisieren">
                         <RefreshCw size={16} />
                     </button>
-                    <button className="btn" onClick={() => setIsModalOpen(true)}>
-                        <Plus size={18} /> Neuen Screen koppeln
+                    <button className="btn" onClick={() => setIsPairing(true)}>
+                        <Smartphone size={18} /> Neuen Screen koppeln
                     </button>
                 </div>
             </div>
 
             <div className="card">
-                {screens.length === 0 ? (
+                {loading ? (
+                    <div className="empty-state">
+                        <p>Lade Screens...</p>
+                    </div>
+                ) : screens.length === 0 ? (
                     <div className="empty-state">
                         <Monitor size={48} style={{ opacity: 0.5, marginBottom: '10px' }} />
                         <p>Es sind noch keine Screens verbunden.</p>
@@ -107,7 +117,7 @@ function ScreensPage() {
                             <tr>
                                 <th>Status</th>
                                 <th>Name</th>
-                                <th>Zugewiesene Playlist</th>
+                                <th>Zugewiesene Playlist/Layout</th>
                                 <th>Zuletzt gesehen</th>
                                 <th style={{ width: '60px' }}></th>
                             </tr>
@@ -122,18 +132,54 @@ function ScreensPage() {
                                         </span>
                                     </td>
                                     <td style={{ fontWeight: 500 }}>{screen.name}</td>
-                                    <td>
-                                        <select
-                                            className="form-control"
-                                            style={{ maxWidth: '220px' }}
-                                            value={screen.active_playlist_id || ''}
-                                            onChange={(e) => assignPlaylist(screen.id, e.target.value, screen.name)}
-                                        >
-                                            <option value="">-- Keine Playlist --</option>
-                                            {playlists.map(pl => (
-                                                <option key={pl.id} value={pl.id}>{pl.name}</option>
-                                            ))}
-                                        </select>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            {/* Modus Toggle: Playlist vs Layout */}
+                                            <select
+                                                className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-50 text-sm font-medium"
+                                                value={screen.active_layout_id ? 'layout' : 'playlist'}
+                                                onChange={(e) => {
+                                                    if (e.target.value === 'playlist') {
+                                                        updateScreen(screen.id, screen.name, screen.active_playlist_id || '', null);
+                                                    } else {
+                                                        updateScreen(screen.id, screen.name, null, screen.active_layout_id || '');
+                                                    }
+                                                }}
+                                            >
+                                                <option value="playlist">Playlist</option>
+                                                <option value="layout">Layout</option>
+                                            </select>
+
+                                            {screen.active_layout_id || (screen.active_layout_id === null && !screen.active_playlist_id) ? (
+                                                <div className="flex-1 flex items-center gap-2">
+                                                    <LayoutDashboard size={18} className="text-gray-400" />
+                                                    <select
+                                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        value={screen.active_layout_id || ''}
+                                                        onChange={(e) => updateScreen(screen.id, screen.name, null, e.target.value)}
+                                                    >
+                                                        <option value="">-- Kein Layout --</option>
+                                                        {layouts.map(l => (
+                                                            <option key={l.id} value={l.id}>{l.name} ({l.resolution})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 flex items-center gap-2">
+                                                    <ListVideo size={18} className="text-gray-400" />
+                                                    <select
+                                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        value={screen.active_playlist_id || ''}
+                                                        onChange={(e) => updateScreen(screen.id, screen.name, e.target.value, null)}
+                                                    >
+                                                        <option value="">-- Keine Playlist --</option>
+                                                        {playlists.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                                         {getLastSeen(screen.last_seen)}
@@ -154,14 +200,14 @@ function ScreensPage() {
                 )}
             </div>
 
-            {isModalOpen && (
+            {isPairing && (
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <h3>Screen per Code koppeln</h3>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>
                             Öffne <strong>{window.location.origin}/#/player</strong> auf dem Gerät. Der angezeigte 6-stellige Code wird hier eingetragen.
                         </p>
-                        {error && <div style={{ color: '#e53e3e', marginBottom: '10px', fontSize: '0.9rem', padding: '8px', background: '#fff5f5', borderRadius: '4px' }}>{error}</div>}
+                        {pairingError && <div style={{ color: '#e53e3e', marginBottom: '10px', fontSize: '0.9rem', padding: '8px', background: '#fff5f5', borderRadius: '4px' }}>{pairingError}</div>}
                         <form onSubmit={handlePairing}>
                             <div className="form-group">
                                 <label>Pairing Code (6 Ziffern)</label>
@@ -177,8 +223,8 @@ function ScreensPage() {
                                 />
                             </div>
                             <div className="modal-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => { setIsModalOpen(false); setError(''); }}>Abbrechen</button>
-                                <button type="submit" className="btn"><Link2 size={16} /> Koppeln</button>
+                                <button type="button" className="btn btn-secondary" onClick={() => { setIsPairing(false); setPairingError(''); }}>Abbrechen</button>
+                                <button type="submit" className="btn">Koppeln</button>
                             </div>
                         </form>
                     </div>
@@ -186,6 +232,6 @@ function ScreensPage() {
             )}
         </div>
     );
-}
+};
 
 export default ScreensPage;

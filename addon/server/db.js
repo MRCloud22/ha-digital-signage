@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure data directory exists
-const dataDir = process.env.UPLOAD_DIR ? path.dirname(process.env.DB_PATH || '') : path.join(__dirname, 'data');
+const dataDir = process.env.DB_PATH ? path.dirname(process.env.DB_PATH) : path.join(__dirname, 'data');
 if (dataDir && !fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -71,8 +71,42 @@ db.serialize(() => {
             pairing_code TEXT,
             token TEXT,
             active_playlist_id TEXT,
+            active_layout_id TEXT,
             last_seen DATETIME,
-            FOREIGN KEY (active_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+            FOREIGN KEY (active_playlist_id) REFERENCES playlists(id) ON DELETE SET NULL,
+            FOREIGN KEY (active_layout_id) REFERENCES layouts(id) ON DELETE SET NULL
+        )
+    `);
+
+    // Migration: add active_layout_id to existing screens tables
+    db.run(`ALTER TABLE screens ADD COLUMN active_layout_id TEXT`, () => { });
+
+    // ---- LAYOUTS ----
+    db.run(`
+        CREATE TABLE IF NOT EXISTS layouts (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            orientation TEXT NOT NULL DEFAULT 'landscape',
+            resolution TEXT NOT NULL DEFAULT '1920x1080',
+            bg_color TEXT DEFAULT '#000000',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS layout_zones (
+            id TEXT PRIMARY KEY,
+            layout_id TEXT NOT NULL,
+            name TEXT DEFAULT 'Zone',
+            x_percent REAL NOT NULL DEFAULT 0,
+            y_percent REAL NOT NULL DEFAULT 0,
+            width_percent REAL NOT NULL DEFAULT 100,
+            height_percent REAL NOT NULL DEFAULT 100,
+            playlist_id TEXT,
+            z_index INTEGER DEFAULT 0,
+            FOREIGN KEY (layout_id) REFERENCES layouts(id) ON DELETE CASCADE,
+            FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
         )
     `);
 });

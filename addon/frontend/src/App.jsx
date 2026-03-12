@@ -1,10 +1,12 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Monitor, ListVideo, Image as ImageIcon, Settings } from 'lucide-react';
+import { Monitor, ListVideo, Image as ImageIcon, LayoutDashboard } from 'lucide-react';
 import ScreensPage from './pages/ScreensPage';
 import PlaylistsPage from './pages/PlaylistsPage';
 import MediaPage from './pages/MediaPage';
 import PlayerPage from './pages/PlayerPage/PlayerPage';
+import LayoutsPage from './pages/LayoutsPage';
+import LayoutEditorPage from './pages/LayoutEditorPage';
 import './App.css';
 
 function App() {
@@ -16,6 +18,7 @@ function App() {
   const navItems = [
     { path: '/', label: 'Screens', icon: Monitor },
     { path: '/playlists', label: 'Playlisten', icon: ListVideo },
+    { path: '/layouts', label: 'Layouts', icon: LayoutDashboard },
     { path: '/media', label: 'Medien', icon: ImageIcon },
   ];
 
@@ -53,6 +56,8 @@ function App() {
         <Routes>
           <Route path="/" element={<ScreensPage />} />
           <Route path="/playlists" element={<PlaylistsPage />} />
+          <Route path="/layouts" element={<LayoutsPage />} />
+          <Route path="/layouts/:id/edit" element={<LayoutEditorPage />} />
           <Route path="/media" element={<MediaPage />} />
         </Routes>
       </main>

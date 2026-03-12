@@ -5,4 +5,14 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './', // WICHTIG für Home Assistant Ingress (relative Pfade)
+  server: {
+    proxy: {
+      '/api': 'http://localhost:9999',
+      '/socket.io': {
+        target: 'http://localhost:9999',
+        ws: true
+      },
+      '/uploads': 'http://localhost:9999'
+    }
+  }
 })
