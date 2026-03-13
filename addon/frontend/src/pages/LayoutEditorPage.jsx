@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Save, Plus, Trash2, LayoutDashboard, Settings } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, LayoutDashboard, Settings, ListVideo } from 'lucide-react';
 
 const LayoutEditorPage = () => {
     const { id } = useParams();
@@ -13,6 +13,7 @@ const LayoutEditorPage = () => {
     const [playlists, setPlaylists] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [showSavedFeedback, setShowSavedFeedback] = useState(false);
 
     // activeZone is the zone currently selected for editing properties
     const [activeZoneId, setActiveZoneId] = useState(null);
