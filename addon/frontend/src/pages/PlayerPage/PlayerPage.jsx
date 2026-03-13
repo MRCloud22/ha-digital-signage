@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import { Monitor, ListVideo } from 'lucide-react';
 import './Player.css';
 
 const SERVER_URL = window.location.origin;
