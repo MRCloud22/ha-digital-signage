@@ -144,7 +144,7 @@ const ScreensPage = () => {
                                                 <select
                                                     className="form-control"
                                                     style={{ width: 'auto', padding: '6px 12px', fontSize: '0.85rem' }}
-                                                    value={screen.active_layout_id ? 'layout' : 'playlist'}
+                                                    value={screen.active_layout_id !== null ? 'layout' : 'playlist'}
                                                     onChange={(e) => {
                                                         if (e.target.value === 'playlist') {
                                                             updateScreen(screen.id, screen.name, screen.active_playlist_id || '', null);
@@ -157,7 +157,7 @@ const ScreensPage = () => {
                                                     <option value="layout">Layout</option>
                                                 </select>
 
-                                                {screen.active_layout_id || (screen.active_layout_id === null && !screen.active_playlist_id) ? (
+                                                {screen.active_layout_id !== null ? (
                                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                         <LayoutDashboard size={18} style={{ color: 'var(--text-dim)' }} />
                                                         <select
