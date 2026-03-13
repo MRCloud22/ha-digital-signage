@@ -79,12 +79,13 @@ function MediaPage() {
     };
 
     const getIconForType = (type) => {
+        const iconStyle = { marginBottom: '4px' };
         switch (type) {
-            case 'image': return <ImageIcon size={20} color="#4299e1" />;
-            case 'video': return <Video size={20} color="#48bb78" />;
-            case 'document': return <FileText size={20} color="#ed8936" />;
-            case 'webpage': return <Globe size={20} color="#9f7aea" />;
-            default: return <ImageIcon size={20} />;
+            case 'image': return <div className="type-icon" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}><ImageIcon size={18} /></div>;
+            case 'video': return <div className="type-icon" style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80' }}><Video size={18} /></div>;
+            case 'document': return <div className="type-icon" style={{ background: 'rgba(251, 146, 60, 0.15)', color: '#fb923c' }}><FileText size={18} /></div>;
+            case 'webpage': return <div className="type-icon" style={{ background: 'rgba(167, 139, 250, 0.15)', color: '#a78bfa' }}><Globe size={18} /></div>;
+            default: return <div className="type-icon"><ImageIcon size={18} /></div>;
         }
     };
 
@@ -92,68 +93,96 @@ function MediaPage() {
         <div>
             <div className="page-header">
                 <h1>Medien Bibliothek</h1>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn" onClick={() => setIsUploadModalOpen(true)}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button className="btn btn-primary" onClick={() => setIsUploadModalOpen(true)}>
                         <Upload size={18} /> Datei hochladen
                     </button>
                     <button className="btn btn-secondary" onClick={() => setIsWebModalOpen(true)}>
-                        <LinkIcon size={18} /> Webseite hinzufügen
+                        <Globe size={18} /> Webseite hinzufügen
                     </button>
                 </div>
             </div>
 
-            <div className="card">
-                {media.length === 0 ? (
-                    <div className="empty-state">
-                        <ImageIcon size={48} style={{ opacity: 0.5, marginBottom: '10px' }} />
-                        <p>Es sind noch keine Medien vorhanden.</p>
-                    </div>
-                ) : (
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Typ</th>
-                                <th>Name</th>
-                                <th>Pfad / URL</th>
-                                <th>Dauer (Sek)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {media.map(item => (
-                                <tr key={item.id}>
-                                    <td style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {getIconForType(item.type)}
-                                        <span style={{ textTransform: 'capitalize' }}>{item.type}</span>
-                                    </td>
-                                    <td>{item.name}</td>
-                                    <td>
-                                        {item.type === 'webpage' ?
-                                            <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a> :
-                                            item.filepath
-                                        }
-                                    </td>
-                                    <td>{item.type === 'video' ? 'Auto' : item.duration}</td>
+            {media.length === 0 ? (
+                <div className="glass-card empty-state" style={{ padding: '80px 40px' }}>
+                    <ImageIcon size={64} style={{ opacity: 0.15, marginBottom: '24px' }} />
+                    <h3 style={{ color: 'var(--text-dim)' }}>Keine Medien vorhanden</h3>
+                    <p style={{ color: 'var(--text-dim)', maxWidth: '400px', margin: '0 auto', fontSize: '0.95rem' }}>
+                        Laden Sie Bilder, Videos oder PDF-Dokumente hoch oder fügen Sie Webseiten-URLs hinzu, um sie in Ihren Playlisten zu verwenden.
+                    </p>
+                </div>
+            ) : (
+                <div className="glass-card">
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '120px' }}>Typ</th>
+                                    <th>Name</th>
+                                    <th>Pfad / URL</th>
+                                    <th style={{ width: '140px' }}>Dauer (Sek)</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+                            </thead>
+                            <tbody>
+                                {media.map(item => (
+                                    <tr key={item.id}>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                {getIconForType(item.type)}
+                                                <span style={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.85rem' }}>{item.type}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ fontWeight: 600 }}>{item.name}</td>
+                                        <td style={{ maxWidth: '300px' }}>
+                                            {item.type === 'webpage' ?
+                                                <a href={item.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', borderBottom: '1px solid currentColor' }}>{item.url}</a> :
+                                                <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{item.filepath}</span>
+                                            }
+                                        </td>
+                                        <td style={{ color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                                            {item.type === 'video' ? 
+                                                <span className="badge badge-primary" style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80' }}>Auto</span> : 
+                                                item.duration
+                                            }
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Upload Modal */}
             {isUploadModalOpen && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3>Medien hochladen</h3>
+                    <div className="modal-content" style={{ maxWidth: '480px' }}>
+                        <h2 style={{ marginBottom: '24px' }}>Medien hochladen</h2>
                         <form onSubmit={handleFileUpload}>
                             <div className="form-group">
-                                <label>Datei (Bild, Video, PDF)</label>
-                                <input
-                                    type="file"
-                                    accept="image/*,video/*,application/pdf"
-                                    onChange={(e) => setFile(e.target.files[0])}
-                                    required
-                                />
+                                <label>Datei auswählen</label>
+                                <div style={{ 
+                                    border: '2px dashed var(--border)', 
+                                    padding: '32px', 
+                                    borderRadius: '12px', 
+                                    textAlign: 'center',
+                                    background: 'var(--bg-secondary)',
+                                    cursor: 'pointer'
+                                }} onClick={() => document.getElementById('fileInput').click()}>
+                                    <Upload size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>{file ? file.name : 'Klicke zum Auswählen oder Drag & Drop'}</p>
+                                    <input
+                                        id="fileInput"
+                                        type="file"
+                                        accept="image/*,video/*,application/pdf"
+                                        onChange={(e) => {
+                                            const f = e.target.files[0];
+                                            setFile(f);
+                                            if (f && !uploadName) setUploadName(f.name.split('.')[0]);
+                                        }}
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label>Anzeigename</label>
@@ -161,7 +190,8 @@ function MediaPage() {
                                     type="text"
                                     value={uploadName}
                                     onChange={(e) => setUploadName(e.target.value)}
-                                    placeholder="z.B. Sommer Angebot"
+                                    placeholder="Name für die Bibliothek"
+                                    className="form-control"
                                     required
                                 />
                             </div>
@@ -171,13 +201,18 @@ function MediaPage() {
                                     type="number"
                                     value={uploadDuration}
                                     onChange={(e) => setUploadDuration(Number(e.target.value))}
+                                    className="form-control"
                                     min="1"
                                 />
-                                <small style={{ color: 'var(--text-secondary)' }}>Wird bei Videos ignoriert (spielt bis zum Ende).</small>
+                                <p style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                                    Bei Videos wird dieser Wert ignoriert – das Video wird immer in voller Länge abgespielt.
+                                </p>
                             </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-secondary" onClick={() => setIsUploadModalOpen(false)}>Abbrechen</button>
-                                <button type="submit" className="btn"><Upload size={16} /> Hochladen</button>
+                                <button type="submit" className="btn btn-primary" disabled={!file || !uploadName}>
+                                    <Upload size={18} /> Hochladen
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -187,8 +222,8 @@ function MediaPage() {
             {/* Webpage Modal */}
             {isWebModalOpen && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3>Webseite hinzufügen</h3>
+                    <div className="modal-content" style={{ maxWidth: '480px' }}>
+                        <h2 style={{ marginBottom: '24px' }}>Webseite hinzufügen</h2>
                         <form onSubmit={handleWebAdd}>
                             <div className="form-group">
                                 <label>URL</label>
@@ -196,8 +231,10 @@ function MediaPage() {
                                     type="url"
                                     value={webUrl}
                                     onChange={(e) => setWebUrl(e.target.value)}
-                                    placeholder="https://example.com"
+                                    placeholder="https://deine-webseite.de"
+                                    className="form-control"
                                     required
+                                    autoFocus
                                 />
                             </div>
                             <div className="form-group">
@@ -206,7 +243,8 @@ function MediaPage() {
                                     type="text"
                                     value={webName}
                                     onChange={(e) => setWebName(e.target.value)}
-                                    placeholder="z.B. Nachrichten"
+                                    placeholder="Titel für die Bibliothek"
+                                    className="form-control"
                                     required
                                 />
                             </div>
@@ -216,12 +254,15 @@ function MediaPage() {
                                     type="number"
                                     value={webDuration}
                                     onChange={(e) => setWebDuration(Number(e.target.value))}
+                                    className="form-control"
                                     min="1"
                                 />
                             </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-secondary" onClick={() => setIsWebModalOpen(false)}>Abbrechen</button>
-                                <button type="submit" className="btn"><LinkIcon size={16} /> Hinzufügen</button>
+                                <button type="submit" className="btn btn-primary" disabled={!webUrl || !webName}>
+                                    <LinkIcon size={18} /> URL hinzufügen
+                                </button>
                             </div>
                         </form>
                     </div>

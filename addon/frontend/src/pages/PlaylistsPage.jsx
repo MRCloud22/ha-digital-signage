@@ -129,36 +129,36 @@ function PlaylistsPage() {
     const nestablePlaylist = playlists.filter(p => p.id !== selectedPlaylist?.id);
 
     return (
-        <div style={{ display: 'flex', gap: '20px', height: '100%' }}>
+        <div style={{ display: 'flex', gap: '24px', height: '100%', alignItems: 'flex-start' }}>
             {/* Left panel: playlist list */}
-            <div style={{ width: '280px', flexShrink: 0 }}>
-                <div className="page-header" style={{ marginBottom: '16px' }}>
-                    <h1>Playlisten</h1>
-                    <button className="btn" onClick={() => setIsCreating(true)}>
-                        <Plus size={16} /> Neu
+            <div style={{ width: '320px', flexShrink: 0 }}>
+                <div className="page-header" style={{ marginBottom: '24px' }}>
+                    <h1 style={{ fontSize: '1.5rem' }}>Playlisten</h1>
+                    <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
+                        <Plus size={18} />
                     </button>
                 </div>
 
                 {isCreating && (
-                    <form onSubmit={createPlaylist} className="card" style={{ marginBottom: '12px', padding: '12px' }}>
+                    <form onSubmit={createPlaylist} className="glass-card" style={{ marginBottom: '16px', padding: '16px' }}>
                         <input
                             autoFocus className="form-control" type="text"
-                            placeholder="Playlist Name" value={newName}
+                            placeholder="Name..." value={newName}
                             onChange={e => setNewName(e.target.value)}
-                            style={{ marginBottom: '8px', width: '100%' }}
+                            style={{ marginBottom: '12px' }}
                         />
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            <button type="submit" className="btn" style={{ flex: 1 }}>Erstellen</button>
-                            <button type="button" className="btn btn-secondary" onClick={() => setIsCreating(false)}>Abbrechen</button>
+                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Speichern</button>
+                            <button type="button" className="btn btn-secondary" onClick={() => setIsCreating(false)}>×</button>
                         </div>
                     </form>
                 )}
 
-                <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div className="glass-card" style={{ padding: '8px', overflow: 'hidden' }}>
                     {playlists.length === 0 && (
-                        <div className="empty-state" style={{ padding: '30px' }}>
-                            <ListVideo size={36} style={{ opacity: 0.4 }} />
-                            <p>Keine Playlisten</p>
+                        <div className="empty-state" style={{ padding: '32px' }}>
+                            <ListVideo size={40} style={{ opacity: 0.2, marginBottom: '12px' }} />
+                            <p style={{ color: 'var(--text-dim)' }}>Keine Playlisten</p>
                         </div>
                     )}
                     {playlists.map(pl => (
@@ -168,21 +168,24 @@ function PlaylistsPage() {
                             style={{
                                 padding: '12px 16px', cursor: 'pointer', display: 'flex',
                                 justifyContent: 'space-between', alignItems: 'center',
-                                borderBottom: '1px solid var(--border)',
-                                background: selectedPlaylist?.id === pl.id ? 'var(--primary-dim)' : 'transparent',
-                                transition: 'background 0.15s',
+                                borderRadius: '8px',
+                                marginBottom: '4px',
+                                background: selectedPlaylist?.id === pl.id ? 'rgba(14, 165, 233, 0.15)' : 'transparent',
+                                color: selectedPlaylist?.id === pl.id ? 'var(--primary)' : 'var(--text-secondary)',
+                                transition: 'all var(--transition-fast)',
                             }}
+                            className="nav-item-hover"
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <ListVideo size={16} />
-                                <span style={{ fontWeight: selectedPlaylist?.id === pl.id ? 600 : 400 }}>{pl.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <ListVideo size={18} style={{ opacity: selectedPlaylist?.id === pl.id ? 1 : 0.6 }} />
+                                <span style={{ fontWeight: selectedPlaylist?.id === pl.id ? 700 : 500 }}>{pl.name}</span>
                             </div>
-                            <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                                <button className="btn-icon" title="Einstellungen" onClick={() => setEditingPlaylist({ ...pl })}>
-                                    <Settings size={14} />
+                            <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                                <button className="btn-icon" title="Settings" onClick={() => setEditingPlaylist({ ...pl })}>
+                                    <Settings size={16} />
                                 </button>
-                                <button className="btn-icon danger" title="Löschen" onClick={() => deletePlaylist(pl.id)}>
-                                    <Trash2 size={14} />
+                                <button className="btn-icon danger" title="Delete" onClick={() => deletePlaylist(pl.id)}>
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         </div>
@@ -193,43 +196,47 @@ function PlaylistsPage() {
             {/* Right panel: playlist items */}
             <div style={{ flex: 1 }}>
                 {!selectedPlaylist ? (
-                    <div className="card empty-state" style={{ height: '300px', justifyContent: 'center' }}>
-                        <ListVideo size={48} style={{ opacity: 0.3 }} />
-                        <p>Wähle eine Playlist aus</p>
+                    <div className="glass-card empty-state" style={{ height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <ListVideo size={64} style={{ opacity: 0.15, marginBottom: '24px' }} />
+                        <h3 style={{ color: 'var(--text-dim)' }}>Playlist auswählen</h3>
+                        <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Wähle links eine Playlist aus, um den Inhalt zu verwalten.</p>
                     </div>
                 ) : (
                     <>
-                        <div className="page-header" style={{ marginBottom: '16px' }}>
-                            <h2>{selectedPlaylist.name}</h2>
-                            <button className="btn" onClick={() => setShowAddItem(true)}>
-                                <Plus size={16} /> Inhalt hinzufügen
+                        <div className="page-header" style={{ marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{selectedPlaylist.name}</h2>
+                            <button className="btn btn-primary" onClick={() => setShowAddItem(true)}>
+                                <Plus size={18} /> Inhalt hinzufügen
                             </button>
                         </div>
 
                         {selectedPlaylist.rss_ticker_url && (
-                            <div className="card" style={{ marginBottom: '12px', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--primary-dim)' }}>
-                                <Rss size={16} />
-                                <span style={{ fontSize: '0.85rem' }}>RSS Ticker aktiv: <strong>{selectedPlaylist.rss_ticker_url}</strong></span>
-                                <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    Geschwindigkeit: {selectedPlaylist.rss_ticker_speed}px/s · Schriftgröße: {selectedPlaylist.rss_ticker_font_size}px
-                                </span>
+                            <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(14, 165, 233, 0.1)' }}>
+                                <Rss size={18} style={{ color: 'var(--primary)' }} />
+                                <div style={{ flex: 1 }}>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>RSS Ticker Aktiv</p>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>{selectedPlaylist.rss_ticker_url}</p>
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>
+                                    {selectedPlaylist.rss_ticker_speed}px/s · {selectedPlaylist.rss_ticker_font_size}px
+                                </div>
                             </div>
                         )}
 
-                        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div className="table-container">
                             {items.length === 0 ? (
-                                <div className="empty-state" style={{ padding: '40px' }}>
-                                    <p>Noch keine Inhalte. Füge Medien oder Sub-Playlisten hinzu.</p>
+                                <div className="empty-state" style={{ padding: '60px' }}>
+                                    <p style={{ color: 'var(--text-dim)' }}>Noch keine Inhalte hinzugefügt.</p>
                                 </div>
                             ) : (
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <table>
                                     <thead>
-                                        <tr style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
-                                            <th style={{ padding: '10px 16px', textAlign: 'left', width: '40px' }}>#</th>
-                                            <th style={{ padding: '10px 16px', textAlign: 'left' }}>Inhalt</th>
-                                            <th style={{ padding: '10px 16px', textAlign: 'left', width: '80px' }}>Typ</th>
-                                            <th style={{ padding: '10px 16px', textAlign: 'left', width: '140px' }}>Dauer (Sek.)</th>
-                                            <th style={{ padding: '10px 8px', textAlign: 'center', width: '110px' }}>Aktionen</th>
+                                        <tr>
+                                            <th style={{ width: '40px' }}>#</th>
+                                            <th>Inhalt</th>
+                                            <th style={{ width: '100px' }}>Typ</th>
+                                            <th style={{ width: '160px' }}>Dauer</th>
+                                            <th style={{ width: '120px', textAlign: 'center' }}>Aktionen</th>
                                         </tr>
                                     </thead>
                                     <tbody>

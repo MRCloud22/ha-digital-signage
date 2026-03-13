@@ -180,110 +180,98 @@ const LayoutEditorPage = () => {
         : "h-[80vh] aspect-[9/16] mx-auto";
 
     return (
-        <div className="flex flex-col h-full bg-gray-50">
+        <div className="layout-editor">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm shrink-0">
-                <div className="flex items-center gap-4">
+            <div className="page-header editor-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button 
                         onClick={() => navigate('/layouts')}
-                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition"
+                        className="btn-icon"
+                        title="Zurück zu Layouts"
                     >
                         <ArrowLeft size={20} />
                     </button>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <LayoutDashboard size={24} className="text-blue-600"/>
-                            Layout Editor
-                        </h1>
-                        <p className="text-sm text-gray-500">{layout.name} ({layout.resolution})</p>
-                    </div>
+                    <h1>Layout Editor</h1>
+                    <span className="badge" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                        {layout.resolution} • {layout.orientation === 'landscape' ? 'Quer' : 'Hoch'}
+                    </span>
                 </div>
-                <div className="flex gap-3">
+                <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                         onClick={handleAddZone}
-                        className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition shadow-sm"
+                        className="btn btn-secondary"
                     >
                         <Plus size={18} /> Zone hinzufügen
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className={`flex items-center gap-2 px-6 py-2 rounded-lg transition shadow-sm disabled:opacity-50 ${
-                            showSavedFeedback ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'
-                        } text-white`}
+                        className={`btn btn-primary ${showSavedFeedback ? 'btn-success' : ''}`}
                     >
-                        <Save size={18} /> {saving ? 'Speichert...' : showSavedFeedback ? 'Gespeichert!' : 'Speichern'}
+                        {saving ? <><Settings className="spin" size={18} /> Speichert...</> : showSavedFeedback ? 'Gespeichert!' : <><Save size={18} /> Speichern</>}
                     </button>
                 </div>
             </div>
 
             {/* Main Editor Area */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="editor-main">
                 
                 {/* Left Sidebar: Settings */}
-                <div className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto">
-                    <div className="p-5 border-b border-gray-100">
-                        <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                            <Settings size={18} className="text-gray-500"/> Layout Einstellungen
-                        </h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm text-gray-600 mb-1">Name</label>
+                <div className="editor-sidebar glass-card">
+                    <div className="sidebar-section">
+                        <h3><Settings size={18} /> Layout</h3>
+                        <div className="form-group">
+                            <label>Name</label>
+                            <input
+                                type="text"
+                                value={layout.name}
+                                onChange={e => setLayout({...layout, name: e.target.value})}
+                                className="form-control"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Hintergrundfarbe</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input
+                                    type="color"
+                                    value={layout.bg_color || '#000000'}
+                                    onChange={e => setLayout({...layout, bg_color: e.target.value})}
+                                    style={{ width: '40px', height: '40px', padding: '0', border: 'none', background: 'none', cursor: 'pointer' }}
+                                />
                                 <input
                                     type="text"
-                                    value={layout.name}
-                                    onChange={e => setLayout({...layout, name: e.target.value})}
-                                    className="w-full px-3 py-2 border rounded-md"
+                                    value={layout.bg_color || '#000000'}
+                                    onChange={e => setLayout({...layout, bg_color: e.target.value})}
+                                    className="form-control"
+                                    style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-600 mb-1">Hintergrundfarbe (CSS)</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="color"
-                                        value={layout.bg_color || '#000000'}
-                                        onChange={e => setLayout({...layout, bg_color: e.target.value})}
-                                        className="h-10 w-10 p-1 border rounded-md cursor-pointer"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={layout.bg_color || '#000000'}
-                                        onChange={e => setLayout({...layout, bg_color: e.target.value})}
-                                        className="flex-1 px-3 py-2 border rounded-md font-mono text-sm"
-                                        placeholder="#000000"
-                                    />
-                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Zone Properties (Contextual) */}
-                    <div className="p-5 flex-1 bg-gray-50/50">
-                        <h2 className="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">Ausgewählte Zone</h2>
-                        
+                    <div className="sidebar-section">
+                        <h3><LayoutDashboard size={18} /> Aktive Zone</h3>
                         {!activeZone ? (
-                            <div className="text-center py-8 text-gray-400">
-                                <p className="mb-2">Keine Zone ausgewählt.</p>
-                                <p className="text-sm">Klicken Sie auf eine Zone im Canvas, um sie zu bearbeiten.</p>
+                            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                                <p>Klicken Sie auf eine Zone im Canvas, um sie zu bearbeiten.</p>
                             </div>
                         ) : (
-                            <div className="space-y-5 animate-fade-in">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Zonen-Name</label>
+                            <div className="zone-props">
+                                <div className="form-group">
+                                    <label>Zonen-Name</label>
                                     <input
                                         type="text"
                                         value={activeZone.name}
                                         onChange={e => updateZone(activeZone.id, { name: e.target.value })}
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                                        className="form-control highlight"
                                     />
                                 </div>
-                                
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Playlist zuweisen</label>
+                                <div className="form-group">
+                                    <label>Playlist</label>
                                     <select
                                         value={activeZone.playlist_id || ''}
                                         onChange={e => updateZone(activeZone.id, { playlist_id: e.target.value })}
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                                        className="form-control"
                                     >
                                         <option value="">-- Keine Playlist --</option>
                                         {playlists.map(p => (
@@ -291,51 +279,50 @@ const LayoutEditorPage = () => {
                                         ))}
                                     </select>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs text-gray-500 mb-1">Position X (%)</label>
+                                <div className="grid-compact">
+                                    <div className="form-group">
+                                        <label>X (%)</label>
                                         <input
                                             type="number"
                                             value={Math.round(activeZone.x_percent)}
                                             onChange={e => updateZone(activeZone.id, { x_percent: Number(e.target.value) })}
-                                            className="w-full px-2 py-1.5 border rounded-md text-sm bg-white"
+                                            className="form-control compact"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-gray-500 mb-1">Position Y (%)</label>
+                                    <div className="form-group">
+                                        <label>Y (%)</label>
                                         <input
                                             type="number"
                                             value={Math.round(activeZone.y_percent)}
                                             onChange={e => updateZone(activeZone.id, { y_percent: Number(e.target.value) })}
-                                            className="w-full px-2 py-1.5 border rounded-md text-sm bg-white"
+                                            className="form-control compact"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-gray-500 mb-1">Breite (%)</label>
+                                    <div className="form-group">
+                                        <label>B (%)</label>
                                         <input
                                             type="number"
                                             value={Math.round(activeZone.width_percent)}
                                             onChange={e => updateZone(activeZone.id, { width_percent: Number(e.target.value) })}
-                                            className="w-full px-2 py-1.5 border rounded-md text-sm bg-white"
+                                            className="form-control compact"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-gray-500 mb-1">Höhe (%)</label>
+                                    <div className="form-group">
+                                        <label>H (%)</label>
                                         <input
                                             type="number"
                                             value={Math.round(activeZone.height_percent)}
                                             onChange={e => updateZone(activeZone.id, { height_percent: Number(e.target.value) })}
-                                            className="w-full px-2 py-1.5 border rounded-md text-sm bg-white"
+                                            className="form-control compact"
                                         />
                                     </div>
                                 </div>
-
                                 <button
                                     onClick={() => handleDeleteZone(activeZone.id)}
-                                    className="w-full mt-4 flex items-center justify-center gap-2 py-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition"
+                                    className="btn btn-danger"
+                                    style={{ width: '100%', marginTop: '16px' }}
                                 >
-                                    <Trash2 size={16} /> Zone entfernen
+                                    <Trash2 size={16} /> Zone löschen
                                 </button>
                             </div>
                         )}
@@ -343,9 +330,9 @@ const LayoutEditorPage = () => {
                 </div>
 
                 {/* Right Area: Workspace / Canvas */}
-                <div className="flex-1 p-8 bg-gray-200/50 overflow-auto flex py-12">
+                <div className="editor-canvas-container">
                     <div 
-                        className={`relative shadow-2xl ring-1 ring-gray-900/5 ${canvasContainerClasses}`}
+                        className={`editor-canvas ${layout.orientation}`}
                         style={{ 
                             backgroundColor: layout.bg_color || '#000000',
                             aspectRatio: `${resW} / ${resH}`
@@ -353,8 +340,8 @@ const LayoutEditorPage = () => {
                         ref={canvasRef}
                         onClick={() => setActiveZoneId(null)}
                     >
-                        {/* Canvas Grid Background pattern (optional visual aid) */}
-                        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                        {/* Canvas Grid */}
+                        <div className="canvas-grid"></div>
 
                         {/* Render Zones */}
                         {zones.map(zone => {
@@ -365,59 +352,48 @@ const LayoutEditorPage = () => {
                                 <div
                                     key={zone.id}
                                     onClick={(e) => { e.stopPropagation(); setActiveZoneId(zone.id); }}
-                                    className={`absolute flex flex-col overflow-hidden transition-shadow duration-75
-                                        ${isActive ? 'ring-4 ring-blue-500 shadow-xl z-50' : 'ring-2 ring-white/50 shadow-md hover:ring-blue-300'}
-                                    `}
+                                    className={`canvas-zone ${isActive ? 'active' : ''}`}
                                     style={{
                                         left: `${zone.x_percent}%`,
                                         top: `${zone.y_percent}%`,
                                         width: `${zone.width_percent}%`,
                                         height: `${zone.height_percent}%`,
-                                        backgroundColor: isActive ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-                                        backdropFilter: 'blur(4px)',
                                         zIndex: zone.z_index || 10
                                     }}
                                 >
                                     {/* Zone Drag Handle (Header) */}
                                     <div 
-                                        className={`px-3 py-2 text-sm font-medium flex justify-between items-center cursor-move select-none shrink-0
-                                            ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-800/80 text-gray-200'}
-                                        `}
+                                        className="zone-header"
                                         onMouseDown={(e) => handlePointerDown(e, zone.id, 'drag')}
                                     >
-                                        <span className="truncate pr-2">{zone.name}</span>
-                                        <div className="flex gap-1">
-                                            {/* Z-Index Controls could go here */}
-                                        </div>
+                                        <span className="zone-name">{zone.name}</span>
                                     </div>
 
                                     {/* Zone Content Area */}
-                                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center select-none pointer-events-none">
+                                    <div className="zone-content">
                                         {playlist ? (
                                             <>
-                                                <ListVideo size={32} className={isActive ? 'text-blue-500 mb-2' : 'text-gray-400 mb-2'} />
-                                                <span className={`font-medium ${isActive ? 'text-blue-700' : 'text-gray-300 outline-none'}`}>{playlist.name}</span>
+                                                <ListVideo size={24} className="icon" />
+                                                <span className="playlist-name">{playlist.name}</span>
                                             </>
                                         ) : (
-                                            <span className="text-gray-400/80 text-sm">Keine Playlist</span>
+                                            <span className="no-playlist">Keine Playlist</span>
                                         )}
                                     </div>
 
                                     {/* Resize Info */}
                                     {isActive && (
-                                        <div className="absolute top-10 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded shadow pointer-events-none">
+                                        <div className="zone-info">
                                             {Math.round(zone.width_percent)}% × {Math.round(zone.height_percent)}%
                                         </div>
                                     )}
 
                                     {/* Resize Handle (Bottom Right) */}
                                     <div 
-                                        className={`absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-end justify-end p-1
-                                            ${isActive ? 'opacity-100' : 'opacity-0'}
-                                        `}
+                                        className="zone-resize-handle"
                                         onMouseDown={(e) => handlePointerDown(e, zone.id, 'resize')}
                                     >
-                                        <div className="w-3 h-3 border-r-2 border-b-2 border-blue-500 rounded-br-sm" />
+                                        <div className="resize-icon" />
                                     </div>
                                 </div>
                             );
@@ -426,6 +402,194 @@ const LayoutEditorPage = () => {
                 </div>
 
             </div>
+            
+            <style dangerouslySetInnerHTML={{ __html: `
+                .layout-editor {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                    background: var(--bg-main);
+                    overflow: hidden;
+                }
+                .editor-header {
+                    background: var(--bg-glass);
+                    border-bottom: 1px solid var(--border);
+                    padding: 12px 24px;
+                    margin-bottom: 0;
+                    backdrop-filter: blur(20px);
+                }
+                .editor-main {
+                    display: flex;
+                    flex: 1;
+                    overflow: hidden;
+                }
+                .editor-sidebar {
+                    width: 320px;
+                    background: var(--bg-glass);
+                    border-right: 1px solid var(--border);
+                    display: flex;
+                    flex-direction: column;
+                    border-radius: 0;
+                    padding: 0;
+                    overflow-y: auto;
+                }
+                .sidebar-section {
+                    padding: 24px;
+                    border-bottom: 1px solid var(--border);
+                }
+                .sidebar-section h3 {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    font-size: 0.95rem;
+                    color: var(--text-secondary);
+                    margin-bottom: 20px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                .grid-compact {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+                .form-control.compact {
+                    padding: 8px 12px;
+                    font-size: 0.85rem;
+                    text-align: center;
+                }
+                .form-control.highlight {
+                    border-color: var(--primary-dim);
+                    background: rgba(14, 165, 233, 0.05);
+                }
+                .editor-canvas-container {
+                    flex: 1;
+                    padding: 60px;
+                    background: #000;
+                    background-image: 
+                        radial-gradient(var(--border) 1px, transparent 1px);
+                    background-size: 30px 30px;
+                    overflow: auto;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .editor-canvas {
+                    position: relative;
+                    box-shadow: 0 0 0 12px #1e293b, 0 40px 100px -20px rgba(0,0,0,0.8);
+                    border-radius: 4px;
+                }
+                .editor-canvas.landscape {
+                    width: 100%;
+                    max-width: 1000px;
+                }
+                .editor-canvas.portrait {
+                    height: 100%;
+                    max-height: 800px;
+                }
+                .canvas-grid {
+                    position: absolute;
+                    inset: 0;
+                    pointer-events: none;
+                    opacity: 0.1;
+                    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+                    background-size: 10% 10%;
+                }
+                .canvas-zone {
+                    position: absolute;
+                    display: flex;
+                    flex-direction: column;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    background: rgba(255,255,255,0.05);
+                    backdrop-filter: blur(4px);
+                    transition: border-color 0.2s, background 0.2s;
+                    overflow: hidden;
+                }
+                .canvas-zone:hover {
+                    border-color: var(--primary);
+                    background: rgba(255,255,255,0.1);
+                }
+                .canvas-zone.active {
+                    border-color: var(--primary);
+                    background: rgba(14, 165, 233, 0.1);
+                    box-shadow: 0 0 30px rgba(14, 165, 233, 0.3);
+                    z-index: 100 !important;
+                }
+                .zone-header {
+                    padding: 6px 12px;
+                    background: rgba(0,0,0,0.4);
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    cursor: move;
+                    display: flex;
+                    justify-content: space-between;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                }
+                .canvas-zone.active .zone-header {
+                    background: var(--primary);
+                }
+                .zone-content {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 12px;
+                    text-align: center;
+                    pointer-events: none;
+                }
+                .playlist-name {
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    margin-top: 8px;
+                    color: #fff;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+                }
+                .no-playlist {
+                    font-size: 0.75rem;
+                    color: rgba(255,255,255,0.3);
+                }
+                .zone-info {
+                    position: absolute;
+                    top: 40px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #000;
+                    color: #fff;
+                    font-size: 0.7rem;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    pointer-events: none;
+                }
+                .zone-resize-handle {
+                    position: absolute;
+                    bottom: 0;
+                    right: 0;
+                    width: 20px;
+                    height: 20px;
+                    cursor: se-resize;
+                    display: flex;
+                    align-items: flex-end;
+                    justify-content: flex-end;
+                    padding: 4px;
+                }
+                .resize-icon {
+                    width: 6px;
+                    height: 6px;
+                    border-right: 2px solid rgba(255,255,255,0.5);
+                    border-bottom: 2px solid rgba(255,255,255,0.5);
+                }
+                .active .resize-icon {
+                    border-color: #fff;
+                }
+                .spin {
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}} />
         </div>
     );
 };

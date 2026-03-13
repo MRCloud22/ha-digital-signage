@@ -68,155 +68,164 @@ const LayoutsPage = () => {
     if (loading) return <div className="p-8 text-center text-gray-500">Lade Layouts...</div>;
 
     return (
-        <div className="p-8 max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <LayoutDashboard className="text-blue-600" size={32} />
-                    Layouts
-                </h1>
+        <div>
+            <div className="page-header">
+                <h1>Layouts</h1>
                 <button
                     onClick={() => setIsCreating(true)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    className="btn btn-primary"
                 >
-                    <Plus size={20} />
-                    Neues Layout
+                    <Plus size={20} /> Neues Layout
                 </button>
             </div>
 
+            {layouts.length === 0 ? (
+                <div className="glass-card empty-state" style={{ padding: '80px 40px' }}>
+                    <LayoutDashboard size={64} style={{ opacity: 0.15, marginBottom: '24px' }} />
+                    <h3 style={{ color: 'var(--text-dim)', marginBottom: '12px' }}>Keine Layouts vorhanden</h3>
+                    <p style={{ color: 'var(--text-dim)', maxWidth: '400px', margin: '0 auto', fontSize: '0.95rem' }}>
+                        Erstellen Sie ein Layout, um Ihren Bildschirm in mehrere Zonen zu unterteilen. Jede Zone kann eine eigene Playlist abspielen.
+                    </p>
+                </div>
+            ) : (
+                <div className="glass-card">
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Ausrichtung</th>
+                                    <th>Auflösung</th>
+                                    <th style={{ width: '120px', textAlign: 'right' }}>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {layouts.map(layout => (
+                                    <tr key={layout.id}>
+                                        <td style={{ fontWeight: 600 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <div style={{ 
+                                                    padding: '8px', 
+                                                    background: 'rgba(14, 165, 233, 0.1)', 
+                                                    color: 'var(--primary)', 
+                                                    borderRadius: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    {layout.orientation === 'landscape' ? <Monitor size={20} /> : <MonitorSmartphone size={20} />}
+                                                </div>
+                                                <span style={{ fontSize: '1.05rem' }}>{layout.name}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>
+                                            {layout.orientation === 'landscape' ? 'Querformat' : 'Hochformat'}
+                                        </td>
+                                        <td style={{ color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                                            {layout.resolution}
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                                <button
+                                                    onClick={() => navigate(`/layouts/${layout.id}/edit`)}
+                                                    className="btn-icon"
+                                                    title="Layout bearbeiten"
+                                                >
+                                                    <PenSquare size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteLayout(layout.id)}
+                                                    className="btn-icon danger"
+                                                    title="Layout löschen"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {/* Creation Modal */}
             {isCreating && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4">Neues Layout erstellen</h2>
-                        <form onSubmit={handleCreateLayout} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ maxWidth: '440px' }}>
+                        <h2 style={{ marginBottom: '24px' }}>Neues Layout</h2>
+                        <form onSubmit={handleCreateLayout}>
+                            <div className="form-group">
+                                <label>Name</label>
                                 <input
                                     type="text"
                                     value={newLayout.name}
                                     onChange={e => setNewLayout({ ...newLayout, name: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="form-control"
                                     required
                                     autoFocus
-                                    placeholder="Mein Layout"
+                                    placeholder="z.B. Empfangshalle"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ausrichtung</label>
-                                <div className="flex items-center gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                            <div className="form-group">
+                                <label>Ausrichtung</label>
+                                <div style={{ display: 'flex', gap: '16px', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '10px' }}>
+                                    <label style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', opacity: newLayout.orientation === 'landscape' ? 1 : 0.5 }}>
                                         <input 
                                             type="radio" 
                                             name="orientation" 
                                             value="landscape" 
                                             checked={newLayout.orientation === 'landscape'}
                                             onChange={handleOrientationChange}
+                                            style={{ display: 'none' }}
                                         />
-                                        <Monitor size={18} /> Querformat (Landscape)
+                                        <Monitor size={32} style={{ color: newLayout.orientation === 'landscape' ? 'var(--primary)' : 'inherit' }} />
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Querformat</span>
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', opacity: newLayout.orientation === 'portrait' ? 1 : 0.5 }}>
                                         <input 
                                             type="radio" 
                                             name="orientation" 
                                             value="portrait" 
                                             checked={newLayout.orientation === 'portrait'}
                                             onChange={handleOrientationChange}
+                                            style={{ display: 'none' }}
                                         />
-                                        <MonitorSmartphone size={18} /> Hochformat (Portrait)
+                                        <MonitorSmartphone size={32} style={{ color: newLayout.orientation === 'portrait' ? 'var(--primary)' : 'inherit' }} />
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Hochformat</span>
                                     </label>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Zielauflösung</label>
+                            <div className="form-group">
+                                <label>Zielauflösung</label>
                                 <select
                                     value={newLayout.resolution}
                                     onChange={e => setNewLayout({ ...newLayout, resolution: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="form-control"
                                 >
                                     {resolutionOptions.map(res => (
                                         <option key={res} value={res}>{res}</option>
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
+                            <div className="modal-actions">
                                 <button
                                     type="button"
                                     onClick={() => setIsCreating(false)}
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                    className="btn btn-secondary"
                                 >
                                     Abbrechen
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    className="btn btn-primary"
                                 >
                                     Erstellen
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
-            )}
-
-            {/* Layouts List */}
-            {layouts.length === 0 ? (
-                <div className="bg-gray-50 rounded-xl p-12 text-center border border-gray-100">
-                    <LayoutDashboard className="mx-auto text-gray-300 mb-4" size={64} />
-                    <h3 className="text-xl font-medium text-gray-600 mb-2">Keine Layouts vorhanden</h3>
-                    <p className="text-gray-500 max-w-md mx-auto">
-                        Erstellen Sie ein Layout, um Ihren Bildschirm in mehrere Zonen zu unterteilen. Jede Zone kann eine eigene Playlist abspielen.
-                    </p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Name</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Ausrichtung</th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Auflösung</th>
-                                <th className="px-6 py-4 text-right text-sm font-semibold text-gray-600">Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {layouts.map(layout => (
-                                <tr key={layout.id} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-gray-800">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                                {layout.orientation === 'landscape' ? <Monitor size={20} /> : <MonitorSmartphone size={20} />}
-                                            </div>
-                                            {layout.name}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">
-                                        {layout.orientation === 'landscape' ? 'Querformat' : 'Hochformat'}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">
-                                        {layout.resolution}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => navigate(`/layouts/${layout.id}/edit`)}
-                                                className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition"
-                                                title="Layout bearbeiten"
-                                            >
-                                                <PenSquare size={20} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteLayout(layout.id)}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
-                                                title="Layout löschen"
-                                            >
-                                                <Trash2 size={20} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
                 </div>
             )}
         </div>

@@ -32,26 +32,31 @@ function App() {
 
   return (
     <div className="layout">
-      <nav className="sidebar">
+      {/* Modern Sidebar */}
+      <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>Signage Manager</h2>
+          <h2>Signage OS</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>v1.0.9</p>
         </div>
-        <ul className="nav-list">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <li key={item.path} className={isActive ? 'active' : ''}>
-                <Link to={item.path}>
-                  <Icon size={20} />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+        <nav>
+          <ul className="nav-list">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <li key={item.path} className={isActive ? 'active' : ''}>
+                  <Link to={item.path}>
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </aside>
 
+      {/* Main Content Area */}
       <main className="main-content">
         <Routes>
           <Route path="/" element={<ScreensPage />} />

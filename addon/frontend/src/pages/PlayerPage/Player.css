@@ -1,49 +1,126 @@
 body.player-mode,
-.player-mode #root,
-.player-container {
+.player-mode #root {
     margin: 0;
     padding: 0;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
     background-color: #000;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    position: relative;
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
 }
 
-/* Media Elements */
-.media-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+/* Base Root Container for non-playing states */
+.player-page-root {
+    width: 100vw;
+    height: 100vh;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #0f172a 0%, #000000 100%);
+    padding: 20px;
 }
 
-.media-layer img,
-.media-layer video,
-.media-layer iframe {
+/* Playing state root */
+.player-content-root {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+}
+
+/* Pairing & Status Cards */
+.pairing-card, .status-card {
+    max-width: 500px;
     width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border: none;
+    padding: 48px;
+    text-align: center;
+    animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Document Viewer (PDF) */
-.pdf-container {
-    width: 100%;
-    height: 100%;
-    background: white;
-    border: none;
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* RSS Ticker – height is set inline from playlist config */
+.pairing-icon {
+    color: var(--primary);
+    margin-bottom: 24px;
+    filter: drop-shadow(0 0 15px rgba(14, 165, 233, 0.4));
+}
+
+.success-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--success);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 24px;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+}
+
+.pairing-card h2, .status-card h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.pairing-card p, .status-card p {
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 32px;
+}
+
+.pairing-code-display {
+    font-size: 4.5rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.pairing-footer, .screen-info {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    background: rgba(0,0,0,0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+/* Loader */
+.loader {
+    text-align: center;
+}
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Media Renderer Components */
 .ticker-container {
-    position: fixed;
+    position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
@@ -51,11 +128,9 @@ body.player-mode,
     align-items: center;
     overflow: hidden;
     z-index: 100;
-    border-top: 2px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Scrolling text animation – duration is set inline */
 .ticker-content {
     display: inline-block;
     padding-left: 100vw;
@@ -65,45 +140,6 @@ body.player-mode,
 }
 
 @keyframes ticker-slide {
-    from {
-        transform: translateX(0);
-    }
-
-    to {
-        transform: translateX(calc(-100% - 100vw));
-    }
-}
-
-/* Pairing UI */
-.pairing-screen {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-}
-
-.pairing-box {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 40px 60px;
-    border-radius: 12px;
-    text-align: center;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.pairing-box h2 {
-    font-size: 2rem;
-    margin-top: 0;
-    margin-bottom: 10px;
-}
-
-.pairing-code {
-    font-size: 4rem;
-    font-weight: bold;
-    letter-spacing: 10px;
-    color: #63b3ed;
-    margin: 30px 0;
-    text-shadow: 0 2px 10px rgba(99, 179, 237, 0.3);
+    from { transform: translateX(0); }
+    to { transform: translateX(calc(-100% - 100vw)); }
 }

@@ -327,12 +327,19 @@ function PlayerPage() {
     // --- RENDERING ROUTER ---
     if (!isPaired) {
         return (
-            <div className="player-container pairing-screen">
-                <div className="pairing-box">
-                    <h2>Screen Setup</h2>
-                    <p>Öffne das Dashboard und gib diesen Code unter „Screens" ein.</p>
-                    <div className="pairing-code">{pairingCode || 'LÄDT...'}</div>
-                    <p style={{ color: '#a0aec0' }}>Dashboard: {SERVER_URL}</p>
+            <div className="player-page-root">
+                <div className="pairing-card glass-card">
+                    <div className="pairing-header">
+                        <Monitor size={48} className="pairing-icon" />
+                        <h2>Display Setup</h2>
+                        <p>Diesen Code im Dashboard unter „Screens" eingeben, um dieses Display zu verbinden.</p>
+                    </div>
+                    <div className="pairing-code-display">
+                        {pairingCode || '---'}
+                    </div>
+                    <div className="pairing-footer">
+                        <span>Server: {SERVER_URL}</span>
+                    </div>
                 </div>
             </div>
         );
@@ -340,8 +347,11 @@ function PlayerPage() {
 
     if (loading) {
         return (
-            <div className="player-container pairing-screen">
-                <p style={{ color: '#a0aec0' }}>Lade Konfiguration...</p>
+            <div className="player-page-root">
+                <div className="loader">
+                    <div className="spinner"></div>
+                    <p>Konfiguration wird geladen...</p>
+                </div>
             </div>
         );
     }
@@ -353,7 +363,7 @@ function PlayerPage() {
 
     if (screenData?.active_layout_id && layout) {
         return (
-            <div className="player-container relative w-full h-full" style={{ backgroundColor: layout.bg_color || '#000' }}>
+            <div className="player-content-root" style={{ backgroundColor: layout.bg_color || '#000' }}>
                 {layout.zones?.map(zone => (
                     <div 
                         key={zone.id} 
@@ -374,7 +384,7 @@ function PlayerPage() {
         );
     } else if (screenData?.active_playlist_id) {
         return (
-            <div className="player-container relative w-full h-full" style={{ backgroundColor: '#000' }}>
+            <div className="player-content-root" style={{ backgroundColor: '#000' }}>
                 <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
                     <SingleZoneRenderer playlistId={screenData.active_playlist_id} playlistsData={playlistsData} />
                 </div>
@@ -384,9 +394,15 @@ function PlayerPage() {
 
     // Fallback: No layout and no playlist
     return (
-        <div className="player-container pairing-screen">
-            <h2 style={{ color: 'white' }}>Verbunden ✓</h2>
-            <p style={{ color: '#a0aec0' }}>Warte auf zugewiesenes Layout oder Playlist...</p>
+        <div className="player-page-root">
+            <div className="status-card glass-card">
+                <div className="success-icon">✓</div>
+                <h2>Display bereit</h2>
+                <p>Warte auf zugewiesene Inhalte (Layout oder Playlist)...</p>
+                <div className="screen-info">
+                    ID: {localStorage.getItem('screen_id')?.slice(0, 8)}...
+                </div>
+            </div>
         </div>
     );
 }
