@@ -143,3 +143,7 @@ body.player-mode,
     from { transform: translateX(0); }
     to { transform: translateX(calc(-100% - 100vw)); }
 }
+
+/* Scaling Utilities used in PlayerPage.jsx */
+.w-full { width: 100%; }
+.h-full { height: 100%; }

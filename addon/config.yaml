@@ -1,6 +1,6 @@
 name: "Digital Signage Server"
 description: "Manage screens and playlists for Raspberry Pi digital signage clients."
-version: "1.1.3"
+version: "1.1.4"
 slug: "digital_signage_server"
 init: false
 arch:
