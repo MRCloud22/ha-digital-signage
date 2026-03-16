@@ -215,16 +215,21 @@ app.get('/api/playlists/:id/items', (req, res) => {
 
 // Add media item to playlist
 app.post('/api/playlists/:id/items', (req, res) => {
-    const { media_id, sub_playlist_id, sort_order, duration_override } = req.body;
+    const { mediaId, media_id, subPlaylistId, sub_playlist_id, sortOrder, sort_order, durationOverride, duration_override } = req.body;
     const parentPlaylistId = req.params.id;
     const itemId = uuidv4();
 
-    if (!media_id && !sub_playlist_id) {
+    const mId = mediaId || media_id;
+    const sPId = subPlaylistId || sub_playlist_id;
+    const sOrder = sortOrder !== undefined ? sortOrder : sort_order;
+    const dOverride = durationOverride !== undefined ? durationOverride : duration_override;
+
+    if (!mId && !sPId) {
         return res.status(400).json({ error: 'Either media_id or sub_playlist_id is required' });
     }
 
-    if (sub_playlist_id) {
-        wouldCreateCycle(parentPlaylistId, sub_playlist_id, (hasCycle) => {
+    if (sPId) {
+        wouldCreateCycle(parentPlaylistId, sPId, (hasCycle) => {
             if (hasCycle) {
                 return res.status(400).json({ error: "Cannot add playlist: would create an infinite loop." });
             }
@@ -237,7 +242,7 @@ app.post('/api/playlists/:id/items', (req, res) => {
     function insertItem() {
         db.run(
             `INSERT INTO playlist_items (id, playlist_id, media_id, sub_playlist_id, sort_order, duration_override) VALUES (?, ?, ?, ?, ?, ?)`,
-            [itemId, parentPlaylistId, media_id || null, sub_playlist_id || null, sort_order, duration_override || null],
+            [itemId, parentPlaylistId, mId || null, sPId || null, sOrder, dOverride === '' ? null : dOverride],
             function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 io.emit('playlist_changed');
@@ -248,10 +253,13 @@ app.post('/api/playlists/:id/items', (req, res) => {
 });
 
 app.put('/api/playlists/:playlistId/items/:itemId', (req, res) => {
-     const { duration_override } = req.body;
+     const { durationOverride, duration_override, sortOrder, sort_order } = req.body;
+     const dOverride = durationOverride !== undefined ? durationOverride : duration_override;
+     const sOrder = sortOrder !== undefined ? sortOrder : sort_order;
+
      db.run(
-         `UPDATE playlist_items SET duration_override = ? WHERE id = ? AND playlist_id = ?`,
-         [duration_override === '' ? null : duration_override, req.params.itemId, req.params.playlistId],
+         `UPDATE playlist_items SET duration_override = ?, sort_order = ? WHERE id = ? AND playlist_id = ?`,
+         [dOverride === '' ? null : dOverride, sOrder, req.params.itemId, req.params.playlistId],
          function (err) {
              if (err) return res.status(500).json({ error: err.message });
              io.emit('playlist_changed');

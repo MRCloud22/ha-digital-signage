@@ -36,7 +36,7 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>Signage OS</h2>
-          <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>v1.1.4</p>
+          <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>v1.1.5</p>
         </div>
         <nav>
           <ul className="nav-list">

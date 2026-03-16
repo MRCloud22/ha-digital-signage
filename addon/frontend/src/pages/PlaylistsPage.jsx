@@ -86,10 +86,10 @@ function PlaylistsPage() {
         e.preventDefault();
         try {
             await axios.post(`${API_URL}/playlists/${selectedPlaylist.id}/items`, {
-                mediaId: addType === 'media' ? selectedMediaId : undefined,
-                subPlaylistId: addType === 'playlist' ? selectedSubPlaylistId : undefined,
-                sortOrder: items.length,
-                durationOverride: addDuration ? parseInt(addDuration) : undefined,
+                media_id: addType === 'media' ? selectedMediaId : undefined,
+                sub_playlist_id: addType === 'playlist' ? selectedSubPlaylistId : undefined,
+                sort_order: items.length,
+                duration_override: addDuration ? parseInt(addDuration) : undefined,
             });
             setShowAddItem(false);
             setSelectedMediaId('');
@@ -108,8 +108,8 @@ function PlaylistsPage() {
 
     const updateItemDuration = async (item, newDuration) => {
         await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, {
-            durationOverride: newDuration ? parseInt(newDuration) : null,
-            sortOrder: item.sort_order,
+            duration_override: newDuration ? parseInt(newDuration) : null,
+            sort_order: item.sort_order,
         });
         fetchItems(selectedPlaylist.id);
     };
@@ -120,8 +120,8 @@ function PlaylistsPage() {
         if (swapIndex < 0 || swapIndex >= items.length) return;
 
         const other = items[swapIndex];
-        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, { durationOverride: item.duration_override, sortOrder: other.sort_order });
-        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${other.id}`, { durationOverride: other.duration_override, sortOrder: item.sort_order });
+        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, { duration_override: item.duration_override, sort_order: other.sort_order });
+        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${other.id}`, { duration_override: other.duration_override, sort_order: item.sort_order });
         fetchItems(selectedPlaylist.id);
     };
 
