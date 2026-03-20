@@ -1,438 +1,680 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import axios from 'axios';
-import { ListVideo, Plus, Trash2, ChevronDown, ChevronUp, Settings, Clock, Rss } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  Eye,
+  ListVideo,
+  Plus,
+  Rss,
+  Settings,
+  Trash2,
+} from 'lucide-react';
+import { formatDuration, truncate } from '../ui';
 
-const API_URL = window.location.origin + '/api';
+const API_URL = `${window.location.origin}/api`;
 
 function PlaylistsPage() {
-    const [playlists, setPlaylists] = useState([]);
-    const [media, setMedia] = useState([]);
-    const [selectedPlaylist, setSelectedPlaylist] = useState(null);
-    const [items, setItems] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  const [media, setMedia] = useState([]);
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [items, setItems] = useState([]);
+  const [preview, setPreview] = useState(null);
 
-    // New playlist form
-    const [newName, setNewName] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newName, setNewName] = useState('');
 
-    // Edit playlist settings modal
-    const [editingPlaylist, setEditingPlaylist] = useState(null);
+  const [editingPlaylist, setEditingPlaylist] = useState(null);
 
-    // Add item modal
-    const [showAddItem, setShowAddItem] = useState(false);
-    const [addType, setAddType] = useState('media'); // 'media' | 'playlist'
-    const [selectedMediaId, setSelectedMediaId] = useState('');
-    const [selectedSubPlaylistId, setSelectedSubPlaylistId] = useState('');
-    const [addDuration, setAddDuration] = useState('');
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [addType, setAddType] = useState('media');
+  const [selectedMediaId, setSelectedMediaId] = useState('');
+  const [selectedSubPlaylistId, setSelectedSubPlaylistId] = useState('');
+  const [addDuration, setAddDuration] = useState('');
 
-    useEffect(() => {
-        fetchPlaylists();
-        fetchMedia();
-    }, []);
+  const fetchBaseData = async () => {
+    try {
+      const [playlistsRes, mediaRes] = await Promise.all([
+        axios.get(`${API_URL}/playlists`),
+        axios.get(`${API_URL}/media`),
+      ]);
 
-    useEffect(() => {
-        if (selectedPlaylist) fetchItems(selectedPlaylist.id);
-    }, [selectedPlaylist]);
+      setPlaylists(playlistsRes.data);
+      setMedia(mediaRes.data);
 
-    const fetchPlaylists = async () => {
-        const res = await axios.get(`${API_URL}/playlists`);
-        setPlaylists(res.data);
-    };
+      if (!selectedPlaylist && playlistsRes.data.length > 0) {
+        setSelectedPlaylist(playlistsRes.data[0]);
+      } else if (selectedPlaylist) {
+        const updated = playlistsRes.data.find((entry) => entry.id === selectedPlaylist.id);
+        setSelectedPlaylist(updated || null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch playlists', error);
+    }
+  };
 
-    const fetchMedia = async () => {
-        const res = await axios.get(`${API_URL}/media`);
-        setMedia(res.data);
-    };
+  const refreshPlaylistDetail = async (playlistId) => {
+    try {
+      const [itemsRes, previewRes, playlistsRes] = await Promise.all([
+        axios.get(`${API_URL}/playlists/${playlistId}/items`),
+        axios.get(`${API_URL}/playlists/${playlistId}/preview`),
+        axios.get(`${API_URL}/playlists`),
+      ]);
 
-    const fetchItems = async (playlistId) => {
-        const res = await axios.get(`${API_URL}/playlists/${playlistId}/items`);
-        setItems(res.data);
-    };
+      setItems(itemsRes.data);
+      setPreview(previewRes.data);
+      setPlaylists(playlistsRes.data);
 
-    const createPlaylist = async (e) => {
-        e.preventDefault();
-        if (!newName.trim()) return;
-        await axios.post(`${API_URL}/playlists`, { name: newName });
-        setNewName('');
-        setIsCreating(false);
-        fetchPlaylists();
-    };
+      const updated = playlistsRes.data.find((entry) => entry.id === playlistId);
+      setSelectedPlaylist(updated || null);
+    } catch (error) {
+      console.error('Failed to refresh playlist detail', error);
+    }
+  };
 
-    const deletePlaylist = async (id) => {
-        if (!window.confirm('Playlist wirklich löschen?')) return;
-        await axios.delete(`${API_URL}/playlists/${id}`);
-        if (selectedPlaylist?.id === id) setSelectedPlaylist(null);
-        fetchPlaylists();
-    };
+  const fetchBaseDataEffect = useEffectEvent(() => {
+    fetchBaseData();
+  });
 
-    const savePlaylistSettings = async (e) => {
-        e.preventDefault();
-        await axios.put(`${API_URL}/playlists/${editingPlaylist.id}`, {
-            name: editingPlaylist.name,
-            rssTickerUrl: editingPlaylist.rss_ticker_url,
-            rssTickerSpeed: editingPlaylist.rss_ticker_speed,
-            rssTickerColor: editingPlaylist.rss_ticker_color,
-            rssTickerBgColor: editingPlaylist.rss_ticker_bg_color,
-            rssTickerBgOpacity: editingPlaylist.rss_ticker_bg_opacity ?? 90,
-            rssTickerFontSize: editingPlaylist.rss_ticker_font_size,
-        });
-        setEditingPlaylist(null);
-        fetchPlaylists();
-        if (selectedPlaylist?.id === editingPlaylist.id) {
-            setSelectedPlaylist({ ...editingPlaylist });
-        }
-    };
+  const refreshPlaylistDetailEffect = useEffectEvent((playlistId) => {
+    refreshPlaylistDetail(playlistId);
+  });
 
-    const addItem = async (e) => {
-        e.preventDefault();
-        try {
-            await axios.post(`${API_URL}/playlists/${selectedPlaylist.id}/items`, {
-                media_id: addType === 'media' ? selectedMediaId : undefined,
-                sub_playlist_id: addType === 'playlist' ? selectedSubPlaylistId : undefined,
-                sort_order: items.length,
-                duration_override: addDuration ? parseInt(addDuration) : undefined,
-            });
-            setShowAddItem(false);
-            setSelectedMediaId('');
-            setSelectedSubPlaylistId('');
-            setAddDuration('');
-            fetchItems(selectedPlaylist.id);
-        } catch (err) {
-            alert(err.response?.data?.error || 'Fehler beim Hinzufügen');
-        }
-    };
+  const selectedPlaylistId = selectedPlaylist?.id;
 
-    const removeItem = async (itemId) => {
-        await axios.delete(`${API_URL}/playlists/${selectedPlaylist.id}/items/${itemId}`);
-        fetchItems(selectedPlaylist.id);
-    };
+  useEffect(() => {
+    fetchBaseDataEffect();
+  }, []);
 
-    const updateItemDuration = async (item, newDuration) => {
-        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, {
-            duration_override: newDuration ? parseInt(newDuration) : null,
-            sort_order: item.sort_order,
-        });
-        fetchItems(selectedPlaylist.id);
-    };
+  useEffect(() => {
+    if (!selectedPlaylistId) return;
+    refreshPlaylistDetailEffect(selectedPlaylistId);
+  }, [selectedPlaylistId]);
 
-    const moveItem = async (item, direction) => {
-        const index = items.findIndex(i => i.id === item.id);
-        const swapIndex = direction === 'up' ? index - 1 : index + 1;
-        if (swapIndex < 0 || swapIndex >= items.length) return;
+  const createPlaylist = async (event) => {
+    event.preventDefault();
+    if (!newName.trim()) return;
 
-        const other = items[swapIndex];
-        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, { duration_override: item.duration_override, sort_order: other.sort_order });
-        await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${other.id}`, { duration_override: other.duration_override, sort_order: item.sort_order });
-        fetchItems(selectedPlaylist.id);
-    };
+    try {
+      const response = await axios.post(`${API_URL}/playlists`, { name: newName.trim() });
+      setNewName('');
+      setIsCreating(false);
+      await fetchBaseData();
+      const created = { id: response.data.id, name: response.data.name, description: response.data.description };
+      setSelectedPlaylist(created);
+      await refreshPlaylistDetail(response.data.id);
+    } catch (error) {
+      console.error('Failed to create playlist', error);
+    }
+  };
 
-    // Sub-playlists available to nest (exclude current and its descendants to avoid issues)
-    const nestablePlaylist = playlists.filter(p => p.id !== selectedPlaylist?.id);
+  const deletePlaylist = async (playlistId) => {
+    if (!window.confirm('Playlist wirklich loeschen?')) return;
 
-    return (
-        <div style={{ display: 'flex', gap: '24px', height: '100%', alignItems: 'flex-start' }}>
-            {/* Left panel: playlist list */}
-            <div style={{ width: '320px', flexShrink: 0 }}>
-                <div className="page-header" style={{ marginBottom: '24px' }}>
-                    <h1 style={{ fontSize: '1.5rem' }}>Playlisten</h1>
-                    <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
-                        <Plus size={18} />
-                    </button>
-                </div>
+    try {
+      await axios.delete(`${API_URL}/playlists/${playlistId}`);
+      if (selectedPlaylist?.id === playlistId) {
+        setSelectedPlaylist(null);
+        setItems([]);
+        setPreview(null);
+      }
+      await fetchBaseData();
+    } catch (error) {
+      console.error('Failed to delete playlist', error);
+    }
+  };
 
-                {isCreating && (
-                    <form onSubmit={createPlaylist} className="glass-card" style={{ marginBottom: '16px', padding: '16px' }}>
-                        <input
-                            autoFocus className="form-control" type="text"
-                            placeholder="Name..." value={newName}
-                            onChange={e => setNewName(e.target.value)}
-                            style={{ marginBottom: '12px' }}
-                        />
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Speichern</button>
-                            <button type="button" className="btn btn-secondary" onClick={() => setIsCreating(false)}>×</button>
-                        </div>
-                    </form>
-                )}
+  const savePlaylistSettings = async (event) => {
+    event.preventDefault();
+    if (!editingPlaylist) return;
 
-                <div className="glass-card" style={{ padding: '8px', overflow: 'hidden' }}>
-                    {playlists.length === 0 && (
-                        <div className="empty-state" style={{ padding: '32px' }}>
-                            <ListVideo size={40} style={{ opacity: 0.2, marginBottom: '12px' }} />
-                            <p style={{ color: 'var(--text-dim)' }}>Keine Playlisten</p>
-                        </div>
-                    )}
-                    {playlists.map(pl => (
-                        <div
-                            key={pl.id}
-                            onClick={() => setSelectedPlaylist(pl)}
-                            style={{
-                                padding: '12px 16px', cursor: 'pointer', display: 'flex',
-                                justifyContent: 'space-between', alignItems: 'center',
-                                borderRadius: '8px',
-                                marginBottom: '4px',
-                                background: selectedPlaylist?.id === pl.id ? 'rgba(14, 165, 233, 0.15)' : 'transparent',
-                                color: selectedPlaylist?.id === pl.id ? 'var(--primary)' : 'var(--text-secondary)',
-                                transition: 'all var(--transition-fast)',
-                            }}
-                            className="nav-item-hover"
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <ListVideo size={18} style={{ opacity: selectedPlaylist?.id === pl.id ? 1 : 0.6 }} />
-                                <span style={{ fontWeight: selectedPlaylist?.id === pl.id ? 700 : 500 }}>{pl.name}</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
-                                <button className="btn-icon" title="Settings" onClick={() => setEditingPlaylist({ ...pl })}>
-                                    <Settings size={16} />
-                                </button>
-                                <button className="btn-icon danger" title="Delete" onClick={() => deletePlaylist(pl.id)}>
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+    try {
+      await axios.put(`${API_URL}/playlists/${editingPlaylist.id}`, {
+        name: editingPlaylist.name,
+        description: editingPlaylist.description,
+        rssTickerUrl: editingPlaylist.rss_ticker_url,
+        rssTickerSpeed: editingPlaylist.rss_ticker_speed,
+        rssTickerColor: editingPlaylist.rss_ticker_color,
+        rssTickerBgColor: editingPlaylist.rss_ticker_bg_color,
+        rssTickerBgOpacity: editingPlaylist.rss_ticker_bg_opacity,
+        rssTickerFontSize: editingPlaylist.rss_ticker_font_size,
+      });
+      setEditingPlaylist(null);
+      await fetchBaseData();
+      if (selectedPlaylist) {
+        await refreshPlaylistDetail(selectedPlaylist.id);
+      }
+    } catch (error) {
+      console.error('Failed to save playlist settings', error);
+    }
+  };
 
-            {/* Right panel: playlist items */}
-            <div style={{ flex: 1 }}>
-                {!selectedPlaylist ? (
-                    <div className="glass-card empty-state" style={{ height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <ListVideo size={64} style={{ opacity: 0.15, marginBottom: '24px' }} />
-                        <h3 style={{ color: 'var(--text-dim)' }}>Playlist auswählen</h3>
-                        <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Wähle links eine Playlist aus, um den Inhalt zu verwalten.</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="page-header" style={{ marginBottom: '24px' }}>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{selectedPlaylist.name}</h2>
-                            <button className="btn btn-primary" onClick={() => setShowAddItem(true)}>
-                                <Plus size={18} /> Inhalt hinzufügen
-                            </button>
-                        </div>
+  const addItem = async (event) => {
+    event.preventDefault();
+    if (!selectedPlaylist) return;
 
-                        {selectedPlaylist.rss_ticker_url && (
-                            <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(14, 165, 233, 0.1)' }}>
-                                <Rss size={18} style={{ color: 'var(--primary)' }} />
-                                <div style={{ flex: 1 }}>
-                                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>RSS Ticker Aktiv</p>
-                                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>{selectedPlaylist.rss_ticker_url}</p>
-                                </div>
-                                <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>
-                                    {selectedPlaylist.rss_ticker_speed}px/s · {selectedPlaylist.rss_ticker_font_size}px
-                                </div>
-                            </div>
-                        )}
+    try {
+      await axios.post(`${API_URL}/playlists/${selectedPlaylist.id}/items`, {
+        media_id: addType === 'media' ? selectedMediaId : undefined,
+        sub_playlist_id: addType === 'playlist' ? selectedSubPlaylistId : undefined,
+        sort_order: items.length,
+        duration_override: addDuration ? Number(addDuration) : undefined,
+      });
 
-                        <div className="table-container">
-                            {items.length === 0 ? (
-                                <div className="empty-state" style={{ padding: '60px' }}>
-                                    <p style={{ color: 'var(--text-dim)' }}>Noch keine Inhalte hinzugefügt.</p>
-                                </div>
-                            ) : (
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: '40px' }}>#</th>
-                                            <th>Inhalt</th>
-                                            <th style={{ width: '100px' }}>Typ</th>
-                                            <th style={{ width: '160px' }}>Dauer</th>
-                                            <th style={{ width: '120px', textAlign: 'center' }}>Aktionen</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((item, idx) => (
-                                            <ItemRow key={item.id} item={item} idx={idx} total={items.length}
-                                                onRemove={removeItem}
-                                                onUpdate={updateItemDuration}
-                                                onMove={moveItem}
-                                            />
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
+      setShowAddItem(false);
+      setSelectedMediaId('');
+      setSelectedSubPlaylistId('');
+      setAddDuration('');
+      await refreshPlaylistDetail(selectedPlaylist.id);
+    } catch (error) {
+      alert(error.response?.data?.error || 'Inhalt konnte nicht hinzugefuegt werden.');
+    }
+  };
 
-            {/* Modal: Add item */}
-            {showAddItem && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ width: '440px' }}>
-                        <h3>Inhalt hinzufügen</h3>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            <button className={`btn ${addType === 'media' ? '' : 'btn-secondary'}`} onClick={() => setAddType('media')}>Mediendatei</button>
-                            <button className={`btn ${addType === 'playlist' ? '' : 'btn-secondary'}`} onClick={() => setAddType('playlist')}>Sub-Playlist</button>
-                        </div>
-                        <form onSubmit={addItem}>
-                            {addType === 'media' ? (
-                                <div className="form-group">
-                                    <label>Medium wählen</label>
-                                    <select className="form-control" value={selectedMediaId} onChange={e => setSelectedMediaId(e.target.value)} required>
-                                        <option value="">-- Medium auswählen --</option>
-                                        {media.map(m => (
-                                            <option key={m.id} value={m.id}>{m.name} ({m.type})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            ) : (
-                                <div className="form-group">
-                                    <label>Sub-Playlist wählen</label>
-                                    <select className="form-control" value={selectedSubPlaylistId} onChange={e => setSelectedSubPlaylistId(e.target.value)} required>
-                                        <option value="">-- Playlist auswählen --</option>
-                                        {nestablePlaylist.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                            {addType === 'media' && (
-                                <div className="form-group">
-                                    <label><Clock size={13} /> Dauer überschreiben (Sekunden, leer = Standard)</label>
-                                    <input className="form-control" type="number" min="1" value={addDuration} onChange={e => setAddDuration(e.target.value)} placeholder="z.B. 15" />
-                                </div>
-                            )}
-                            <div className="modal-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowAddItem(false)}>Abbrechen</button>
-                                <button type="submit" className="btn"><Plus size={15} /> Hinzufügen</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+  const removeItem = async (itemId) => {
+    if (!selectedPlaylist) return;
 
-            {/* Modal: Playlist settings */}
-            {editingPlaylist && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ width: '520px' }}>
-                        <h3>Playlist bearbeiten</h3>
-                        <form onSubmit={savePlaylistSettings}>
-                            <div className="form-group">
-                                <label>Name</label>
-                                <input className="form-control" type="text" value={editingPlaylist.name} onChange={e => setEditingPlaylist({ ...editingPlaylist, name: e.target.value })} required />
-                            </div>
+    await axios.delete(`${API_URL}/playlists/${selectedPlaylist.id}/items/${itemId}`);
+    await refreshPlaylistDetail(selectedPlaylist.id);
+  };
 
-                            <hr style={{ margin: '16px 0', borderColor: 'var(--border)' }} />
-                            <h4 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}><Rss size={16} /> RSS Ticker</h4>
+  const updateItemDuration = async (item, newDuration) => {
+    if (!selectedPlaylist) return;
 
-                            <div className="form-group">
-                                <label>RSS Feed URL (leer = Ticker deaktiviert)</label>
-                                <input className="form-control" type="url" value={editingPlaylist.rss_ticker_url || ''} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_url: e.target.value })} placeholder="https://feeds.example.com/rss.xml" />
-                            </div>
+    await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, {
+      duration_override: newDuration ? Number(newDuration) : null,
+      sort_order: item.sort_order,
+    });
+    await refreshPlaylistDetail(selectedPlaylist.id);
+  };
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div className="form-group">
-                                    <label>Textfarbe</label>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <input type="color" value={editingPlaylist.rss_ticker_color || '#ffffff'} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_color: e.target.value })} style={{ width: '40px', height: '36px', border: 'none', background: 'none', cursor: 'pointer' }} />
-                                        <input className="form-control" type="text" value={editingPlaylist.rss_ticker_color || '#ffffff'} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_color: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Hintergrundfarbe</label>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <input type="color" value={editingPlaylist.rss_ticker_bg_color || '#1a1a2e'} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_bg_color: e.target.value })} style={{ width: '40px', height: '36px', border: 'none', background: 'none', cursor: 'pointer' }} />
-                                        <input className="form-control" type="text" value={editingPlaylist.rss_ticker_bg_color || '#1a1a2e'} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_bg_color: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Schriftgröße (px)</label>
-                                    <input className="form-control" type="number" min="10" max="72" value={editingPlaylist.rss_ticker_font_size || 16} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_font_size: parseInt(e.target.value) })} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Scrollgeschwindigkeit (px/s)</label>
-                                    <input className="form-control" type="number" min="10" max="300" value={editingPlaylist.rss_ticker_speed || 60} onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_speed: parseInt(e.target.value) })} />
-                                </div>
-                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                    <label>Hintergrund-Transparenz: <strong>{editingPlaylist.rss_ticker_bg_opacity ?? 90}%</strong></label>
-                                    <input type="range" min="0" max="100" value={editingPlaylist.rss_ticker_bg_opacity ?? 90}
-                                        onChange={e => setEditingPlaylist({ ...editingPlaylist, rss_ticker_bg_opacity: parseInt(e.target.value) })}
-                                        style={{ width: '100%', cursor: 'pointer' }}
-                                    />
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                        <span>0% (durchsichtig)</span><span>100% (voll)</span>
-                                    </div>
-                                </div>
-                            </div>
+  const moveItem = async (item, direction) => {
+    if (!selectedPlaylist) return;
 
-                            {editingPlaylist.rss_ticker_url && (() => {
-                                const op = (editingPlaylist.rss_ticker_bg_opacity ?? 90) / 100;
-                                const bg = editingPlaylist.rss_ticker_bg_color || '#1a1a2e';
-                                // Convert hex + opacity to rgba
-                                const r = parseInt(bg.slice(1, 3), 16), g = parseInt(bg.slice(3, 5), 16), b = parseInt(bg.slice(5, 7), 16);
-                                const previewBg = `rgba(${r},${g},${b},${op})`;
-                                return (
-                                    <div style={{ padding: '10px 14px', borderRadius: '8px', background: previewBg, marginBottom: '12px', overflow: 'hidden' }}>
-                                        <span style={{ color: editingPlaylist.rss_ticker_color || '#ffffff', fontSize: `${editingPlaylist.rss_ticker_font_size || 16}px`, whiteSpace: 'nowrap' }}>
-                                            ▶ RSS Ticker Vorschau – Hier scrollt der Nachrichtentext durch...
-                                        </span>
-                                    </div>
-                                );
-                            })()}
+    const index = items.findIndex((entry) => entry.id === item.id);
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= items.length) return;
 
-                            <div className="modal-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => setEditingPlaylist(null)}>Abbrechen</button>
-                                <button type="submit" className="btn">Speichern</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+    const other = items[swapIndex];
+
+    await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${item.id}`, {
+      duration_override: item.duration_override,
+      sort_order: other.sort_order,
+    });
+    await axios.put(`${API_URL}/playlists/${selectedPlaylist.id}/items/${other.id}`, {
+      duration_override: other.duration_override,
+      sort_order: item.sort_order,
+    });
+
+    await refreshPlaylistDetail(selectedPlaylist.id);
+  };
+
+  const nestablePlaylists = playlists.filter((playlist) => playlist.id !== selectedPlaylist?.id);
+  const previewDuration = preview
+    ? formatDuration(preview.estimatedDurationSeconds, preview.hasDynamicDuration)
+    : '0s';
+
+  return (
+    <div className="workspace-two-column">
+      <div className="sidebar-column">
+        <div className="page-header compact">
+          <div>
+            <h1>Playlisten</h1>
+            <p className="page-subtitle">Direkte Inhalte, RSS-Ticker und Playback-Vorschau.</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
+            <Plus size={18} />
+            Neu
+          </button>
         </div>
-    );
+
+        {isCreating && (
+          <form onSubmit={createPlaylist} className="glass-card create-panel">
+            <div className="form-group">
+              <label>Name</label>
+              <input
+                className="form-control"
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                autoFocus
+                placeholder="z.B. Empfang, Mittag, Event"
+                required
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setIsCreating(false)}>
+                Abbrechen
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Playlist erstellen
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="glass-card list-panel">
+          {playlists.length === 0 ? (
+            <div className="empty-state compact">
+              <ListVideo size={40} style={{ opacity: 0.2 }} />
+              <p>Keine Playlisten vorhanden.</p>
+            </div>
+          ) : (
+            playlists.map((playlist) => (
+              <div
+                key={playlist.id}
+                className={`list-row ${selectedPlaylist?.id === playlist.id ? 'active' : ''}`}
+                onClick={() => setSelectedPlaylist(playlist)}
+              >
+                <div>
+                  <div className="entity-title-row">
+                    <span className="entity-title">{playlist.name}</span>
+                    {playlist.rss_ticker_url ? <span className="badge badge-neutral">RSS</span> : null}
+                  </div>
+                  <div className="entity-meta">{playlist.description || 'Ohne Beschreibung'}</div>
+                </div>
+                <div className="row-actions" onClick={(event) => event.stopPropagation()}>
+                  <button className="btn-icon" onClick={() => setEditingPlaylist({ ...playlist })}>
+                    <Settings size={16} />
+                  </button>
+                  <button className="btn-icon danger" onClick={() => deletePlaylist(playlist.id)}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="content-column">
+        {!selectedPlaylist ? (
+          <div className="glass-card empty-state large">
+            <ListVideo size={64} style={{ opacity: 0.15 }} />
+            <h3>Playlist auswaehlen</h3>
+            <p>Waehle links eine Playlist, um Inhalte, Reihenfolge und Vorschau zu bearbeiten.</p>
+          </div>
+        ) : (
+          <>
+            <div className="page-header">
+              <div>
+                <h2>{selectedPlaylist.name}</h2>
+                <p className="page-subtitle">{selectedPlaylist.description || 'Keine Beschreibung hinterlegt.'}</p>
+              </div>
+              <div className="header-actions">
+                <button className="btn btn-secondary" onClick={() => setEditingPlaylist({ ...selectedPlaylist })}>
+                  <Settings size={18} />
+                  Einstellungen
+                </button>
+                <button className="btn btn-primary" onClick={() => setShowAddItem(true)}>
+                  <Plus size={18} />
+                  Inhalt hinzufuegen
+                </button>
+              </div>
+            </div>
+
+            <div className="stats-grid">
+              <StatCard label="Direkte Items" value={items.length} icon={<ListVideo size={18} />} />
+              <StatCard label="Flattened Preview" value={preview?.totalItems || 0} icon={<Eye size={18} />} />
+              <StatCard label="Geschaetzte Dauer" value={previewDuration} icon={<Clock3 size={18} />} />
+              <StatCard
+                label="RSS-Ticker"
+                value={selectedPlaylist.rss_ticker_url ? 'aktiv' : 'aus'}
+                icon={<Rss size={18} />}
+                accent={selectedPlaylist.rss_ticker_url ? 'success' : 'default'}
+              />
+            </div>
+
+            {selectedPlaylist.rss_ticker_url ? (
+              <div className="glass-card info-strip">
+                <Rss size={18} />
+                <div>
+                  <strong>RSS-Ticker aktiv</strong>
+                  <div className="muted-small">{selectedPlaylist.rss_ticker_url}</div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="glass-card section-card">
+              <div className="section-header">
+                <h3>Direkte Inhalte</h3>
+                <span className="muted-small">Reihenfolge bestimmt die Playback-Logik.</span>
+              </div>
+              {items.length === 0 ? (
+                <div className="empty-state compact">
+                  <p>Diese Playlist enthaelt noch keine direkten Inhalte.</p>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Inhalt</th>
+                        <th>Typ</th>
+                        <th>Dauer</th>
+                        <th style={{ width: '120px', textAlign: 'center' }}>Aktionen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, index) => (
+                        <ItemRow
+                          key={item.id}
+                          item={item}
+                          index={index}
+                          total={items.length}
+                          onRemove={removeItem}
+                          onUpdate={updateItemDuration}
+                          onMove={moveItem}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="glass-card section-card">
+              <div className="section-header">
+                <h3>Abspielvorschau</h3>
+                <span className="muted-small">Serverseitig aufgeloest inklusive Sub-Playlisten.</span>
+              </div>
+              {!preview || preview.flattenedItems.length === 0 ? (
+                <div className="empty-state compact">
+                  <p>Keine Playback-Vorschau verfuegbar.</p>
+                </div>
+              ) : (
+                <div className="preview-sequence">
+                  {preview.flattenedItems.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="preview-sequence-row">
+                      <div className="preview-sequence-index">{index + 1}</div>
+                      <div className="preview-sequence-body">
+                        <div className="entity-title-row">
+                          <span className="entity-title">{item.name}</span>
+                          <span className={`badge badge-${item.type}`}>{item.type}</span>
+                        </div>
+                        <div className="entity-meta">
+                          Quelle: {item.source_playlist_name || 'Direkt'} · Dauer {item.type === 'video' ? 'Video-Ende' : `${item.effective_duration}s`}
+                        </div>
+                        {item.url ? <div className="muted-small">{truncate(item.url, 90)}</div> : null}
+                        {item.content ? <div className="muted-small">{truncate(item.content, 90)}</div> : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {showAddItem && selectedPlaylist && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-narrow">
+            <h3>Inhalt hinzufuegen</h3>
+            <div className="segment-control">
+              <button
+                type="button"
+                className={`segment-button ${addType === 'media' ? 'active' : ''}`}
+                onClick={() => setAddType('media')}
+              >
+                Medium
+              </button>
+              <button
+                type="button"
+                className={`segment-button ${addType === 'playlist' ? 'active' : ''}`}
+                onClick={() => setAddType('playlist')}
+              >
+                Sub-Playlist
+              </button>
+            </div>
+
+            <form onSubmit={addItem}>
+              {addType === 'media' ? (
+                <div className="form-group">
+                  <label>Medium waehlen</label>
+                  <select className="form-control" value={selectedMediaId} onChange={(event) => setSelectedMediaId(event.target.value)} required>
+                    <option value="">Bitte waehlen</option>
+                    {media.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.name} ({entry.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label>Sub-Playlist waehlen</label>
+                  <select className="form-control" value={selectedSubPlaylistId} onChange={(event) => setSelectedSubPlaylistId(event.target.value)} required>
+                    <option value="">Bitte waehlen</option>
+                    {nestablePlaylists.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {addType === 'media' ? (
+                <div className="form-group">
+                  <label>Dauer ueberschreiben (optional)</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min="1"
+                    value={addDuration}
+                    onChange={(event) => setAddDuration(event.target.value)}
+                    placeholder="leer = Standarddauer"
+                  />
+                </div>
+              ) : null}
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddItem(false)}>
+                  Abbrechen
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Hinzufuegen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingPlaylist && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-wide">
+            <h3>Playlist bearbeiten</h3>
+            <form onSubmit={savePlaylistSettings}>
+              <div className="form-group">
+                <label>Name</label>
+                <input
+                  className="form-control"
+                  value={editingPlaylist.name}
+                  onChange={(event) => setEditingPlaylist((current) => ({ ...current, name: event.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Beschreibung</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={editingPlaylist.description || ''}
+                  onChange={(event) => setEditingPlaylist((current) => ({ ...current, description: event.target.value }))}
+                  placeholder="Wofuer ist diese Playlist gedacht?"
+                />
+              </div>
+
+              <div className="divider" />
+
+              <h4 className="modal-subtitle">
+                <Rss size={16} />
+                RSS-Ticker
+              </h4>
+
+              <div className="form-group">
+                <label>Feed URL</label>
+                <input
+                  className="form-control"
+                  type="url"
+                  value={editingPlaylist.rss_ticker_url || ''}
+                  onChange={(event) => setEditingPlaylist((current) => ({ ...current, rss_ticker_url: event.target.value }))}
+                  placeholder="https://example.com/feed.xml"
+                />
+              </div>
+
+              <div className="form-grid two-columns">
+                <div className="form-group">
+                  <label>Textfarbe</label>
+                  <input
+                    className="form-control"
+                    value={editingPlaylist.rss_ticker_color || '#ffffff'}
+                    onChange={(event) => setEditingPlaylist((current) => ({ ...current, rss_ticker_color: event.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Hintergrundfarbe</label>
+                  <input
+                    className="form-control"
+                    value={editingPlaylist.rss_ticker_bg_color || '#1a1a2e'}
+                    onChange={(event) => setEditingPlaylist((current) => ({ ...current, rss_ticker_bg_color: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="form-grid two-columns">
+                <div className="form-group">
+                  <label>Groesse (px)</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min="10"
+                    max="72"
+                    value={editingPlaylist.rss_ticker_font_size || 16}
+                    onChange={(event) => setEditingPlaylist((current) => ({ ...current, rss_ticker_font_size: Number(event.target.value) }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Speed (px/s)</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min="10"
+                    max="400"
+                    value={editingPlaylist.rss_ticker_speed || 60}
+                    onChange={(event) => setEditingPlaylist((current) => ({ ...current, rss_ticker_speed: Number(event.target.value) }))}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Deckkraft: {editingPlaylist.rss_ticker_bg_opacity ?? 90}%</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={editingPlaylist.rss_ticker_bg_opacity ?? 90}
+                  onChange={(event) => setEditingPlaylist((current) => ({ ...current, rss_ticker_bg_opacity: Number(event.target.value) }))}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingPlaylist(null)}>
+                  Abbrechen
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Speichern
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function ItemRow({ item, idx, total, onRemove, onUpdate, onMove }) {
-    const [editDur, setEditDur] = useState(item.duration_override?.toString() || '');
-    const [editing, setEditing] = useState(false);
+function ItemRow({ item, index, total, onRemove, onUpdate, onMove }) {
+  const [editing, setEditing] = useState(false);
+  const [draftDuration, setDraftDuration] = useState(item.duration_override?.toString() || '');
 
-    const isSubPlaylist = !!item.sub_playlist_id;
-    const name = isSubPlaylist ? `📂 ${item.sub_playlist_name}` : item.name;
-    const type = isSubPlaylist ? 'playlist' : item.type;
-    const defaultDur = isSubPlaylist ? '–' : `${item.duration}s`;
-    const effectiveDur = item.duration_override ? `${item.duration_override}s ✏️` : defaultDur;
+  const isSubPlaylist = !!item.sub_playlist_id;
+  const displayName = isSubPlaylist ? `Sub-Playlist: ${item.sub_playlist_name}` : item.name;
+  const displayType = isSubPlaylist ? 'playlist' : item.type;
+  const effectiveDuration = item.duration_override || item.duration || 10;
 
-    const commitDuration = () => {
-        onUpdate(item, editDur);
-        setEditing(false);
-    };
+  const commitDuration = () => {
+    onUpdate(item, draftDuration);
+    setEditing(false);
+  };
 
-    return (
-        <tr style={{ borderBottom: '1px solid var(--border)', fontSize: '0.9rem' }}>
-            <td style={{ padding: '10px 16px', color: 'var(--text-secondary)' }}>{idx + 1}</td>
-            <td style={{ padding: '10px 16px' }}>{name}</td>
-            <td style={{ padding: '10px 16px' }}>
-                <span className={`badge badge-${type}`}>{type}</span>
-            </td>
-            <td style={{ padding: '10px 16px' }}>
-                {isSubPlaylist ? (
-                    <span style={{ color: 'var(--text-secondary)' }}>–</span>
-                ) : editing ? (
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                        <input type="number" min="1" value={editDur} onChange={e => setEditDur(e.target.value)}
-                            style={{ width: '70px', padding: '4px 8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.85rem' }}
-                            onKeyDown={e => e.key === 'Enter' && commitDuration()}
-                            autoFocus
-                        />
-                        <button className="btn" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={commitDuration}>OK</button>
-                        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => setEditing(false)}>×</button>
-                    </div>
-                ) : (
-                    <span onClick={() => setEditing(true)} title="Klicken zum Ändern"
-                        style={{ cursor: 'pointer', padding: '3px 8px', borderRadius: '4px', background: 'var(--primary-dim)', display: 'inline-block' }}>
-                        <Clock size={11} style={{ marginRight: '4px', verticalAlign: 'middle' }} />{effectiveDur}
-                    </span>
-                )}
-            </td>
-            <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                    <button className="btn-icon" title="Hoch" disabled={idx === 0} onClick={() => onMove(item, 'up')}><ChevronUp size={14} /></button>
-                    <button className="btn-icon" title="Runter" disabled={idx === total - 1} onClick={() => onMove(item, 'down')}><ChevronDown size={14} /></button>
-                    <button className="btn-icon danger" title="Entfernen" onClick={() => onRemove(item.id)}><Trash2 size={14} /></button>
-                </div>
-            </td>
-        </tr>
-    );
+  return (
+    <tr>
+      <td>{index + 1}</td>
+      <td>
+        <div className="entity-cell">
+          <span className="entity-title">{displayName}</span>
+          {!isSubPlaylist && item.url ? <span className="entity-meta">{truncate(item.url, 64)}</span> : null}
+        </div>
+      </td>
+      <td>
+        <span className={`badge badge-${displayType}`}>{displayType}</span>
+      </td>
+      <td>
+        {isSubPlaylist ? (
+          <span className="muted-small">uebernimmt Unterplaylist</span>
+        ) : editing ? (
+          <div className="inline-editor">
+            <input
+              className="form-control compact-select"
+              type="number"
+              min="1"
+              value={draftDuration}
+              onChange={(event) => setDraftDuration(event.target.value)}
+              autoFocus
+            />
+            <button type="button" className="btn btn-secondary btn-small" onClick={commitDuration}>
+              OK
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="btn btn-secondary btn-small" onClick={() => setEditing(true)}>
+            <Clock3 size={14} />
+            {item.type === 'video' && !item.duration_override ? 'Video-Ende' : `${effectiveDuration}s`}
+          </button>
+        )}
+      </td>
+      <td style={{ textAlign: 'center' }}>
+        <div className="row-actions centered">
+          <button className="btn-icon" onClick={() => onMove(item, 'up')} disabled={index === 0}>
+            <ChevronUp size={14} />
+          </button>
+          <button className="btn-icon" onClick={() => onMove(item, 'down')} disabled={index === total - 1}>
+            <ChevronDown size={14} />
+          </button>
+          <button className="btn-icon danger" onClick={() => onRemove(item.id)}>
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function StatCard({ label, value, icon, accent = 'default' }) {
+  return (
+    <div className={`stat-card ${accent}`}>
+      <div className="stat-card-icon">{icon}</div>
+      <div>
+        <div className="stat-card-value">{value}</div>
+        <div className="stat-card-label">{label}</div>
+      </div>
+    </div>
+  );
 }
 
 export default PlaylistsPage;

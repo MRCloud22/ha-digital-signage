@@ -170,15 +170,7 @@ const LayoutEditorPage = () => {
 
     const activeZone = zones.find(z => z.id === activeZoneId);
     
-    // Parsing resolution for Aspect Ratio
     const [resW, resH] = layout.resolution.split('x').map(Number);
-    const isLandscape = layout.orientation === 'landscape';
-    const aspectRatio = resW / resH;
-    
-    // Container classes based on orientation to make it fit nice on screen
-    const canvasContainerClasses = isLandscape 
-        ? "w-full aspect-video max-w-4xl max-h-[70vh] mx-auto"
-        : "h-[80vh] aspect-[9/16] mx-auto";
 
     return (
         <div className="layout-editor">

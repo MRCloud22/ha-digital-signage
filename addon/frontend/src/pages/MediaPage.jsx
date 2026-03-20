@@ -1,275 +1,514 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import axios from 'axios';
-import { Upload, Link as LinkIcon, Image as ImageIcon, Video, FileText, Globe } from 'lucide-react';
+import {
+  FileText,
+  Globe,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Search,
+  Trash2,
+  Type,
+  Upload,
+  Video,
+} from 'lucide-react';
+import { truncate } from '../ui';
 
-const API_URL = window.location.origin + '/api';
+const API_URL = `${window.location.origin}/api`;
 
 function MediaPage() {
-    const [media, setMedia] = useState([]);
-    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-    const [isWebModalOpen, setIsWebModalOpen] = useState(false);
+  const [media, setMedia] = useState([]);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
 
-    // Upload State
-    const [file, setFile] = useState(null);
-    const [uploadName, setUploadName] = useState('');
-    const [uploadDuration, setUploadDuration] = useState(10);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isWebModalOpen, setIsWebModalOpen] = useState(false);
+  const [isTextModalOpen, setIsTextModalOpen] = useState(false);
 
-    // Webpage State
-    const [webName, setWebName] = useState('');
-    const [webUrl, setWebUrl] = useState('');
-    const [webDuration, setWebDuration] = useState(30);
+  const [file, setFile] = useState(null);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadDuration, setUploadDuration] = useState(10);
 
-    useEffect(() => {
-        fetchMedia();
-    }, []);
+  const [webName, setWebName] = useState('');
+  const [webUrl, setWebUrl] = useState('');
+  const [webDuration, setWebDuration] = useState(30);
 
-    const fetchMedia = async () => {
-        try {
-            const res = await axios.get(`${API_URL}/media`);
-            setMedia(res.data);
-        } catch (err) {
-            console.error("Fehler beim Laden der Medien", err);
-        }
-    };
+  const [textSlide, setTextSlide] = useState({
+    name: '',
+    content: '',
+    duration: 12,
+    settings: {
+      textColor: '#f8fafc',
+      backgroundColor: '#0f172a',
+      accentColor: '#0ea5e9',
+      fontSize: 42,
+      align: 'center',
+    },
+  });
 
-    const handleFileUpload = async (e) => {
-        e.preventDefault();
-        if (!file || !uploadName) return;
+  const fetchMedia = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/media`);
+      setMedia(response.data);
+    } catch (error) {
+      console.error('Failed to load media', error);
+    }
+  };
 
-        let type = 'image';
-        if (file.type.startsWith('video/')) type = 'video';
-        else if (file.type === 'application/pdf') type = 'document';
+  const fetchMediaEffect = useEffectEvent(() => {
+    fetchMedia();
+  });
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('name', uploadName);
-        formData.append('type', type);
-        formData.append('duration', uploadDuration);
+  useEffect(() => {
+    fetchMediaEffect();
+  }, []);
 
-        try {
-            await axios.post(`${API_URL}/media/upload`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            setIsUploadModalOpen(false);
-            setFile(null);
-            setUploadName('');
-            fetchMedia();
-        } catch (err) {
-            console.error("Fehler beim Upload", err);
-        }
-    };
+  const handleFileUpload = async (event) => {
+    event.preventDefault();
+    if (!file || !uploadName) return;
 
-    const handleWebAdd = async (e) => {
-        e.preventDefault();
-        if (!webName || !webUrl) return;
+    let type = 'image';
+    if (file.type.startsWith('video/')) type = 'video';
+    else if (file.type === 'application/pdf') type = 'document';
 
-        try {
-            await axios.post(`${API_URL}/media/web`, {
-                name: webName,
-                url: webUrl,
-                duration: webDuration
-            });
-            setIsWebModalOpen(false);
-            setWebName('');
-            setWebUrl('');
-            fetchMedia();
-        } catch (err) {
-            console.error("Fehler beim Hinzufügen der URL", err);
-        }
-    };
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', uploadName);
+    formData.append('type', type);
+    formData.append('duration', uploadDuration);
 
-    const getIconForType = (type) => {
-        const iconStyle = { marginBottom: '4px' };
-        switch (type) {
-            case 'image': return <div className="type-icon" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}><ImageIcon size={18} /></div>;
-            case 'video': return <div className="type-icon" style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80' }}><Video size={18} /></div>;
-            case 'document': return <div className="type-icon" style={{ background: 'rgba(251, 146, 60, 0.15)', color: '#fb923c' }}><FileText size={18} /></div>;
-            case 'webpage': return <div className="type-icon" style={{ background: 'rgba(167, 139, 250, 0.15)', color: '#a78bfa' }}><Globe size={18} /></div>;
-            default: return <div className="type-icon"><ImageIcon size={18} /></div>;
-        }
-    };
+    try {
+      await axios.post(`${API_URL}/media/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setFile(null);
+      setUploadName('');
+      setUploadDuration(10);
+      setIsUploadModalOpen(false);
+      await fetchMedia();
+    } catch (error) {
+      console.error('Failed to upload file', error);
+    }
+  };
 
-    return (
+  const handleWebAdd = async (event) => {
+    event.preventDefault();
+    if (!webName || !webUrl) return;
+
+    try {
+      await axios.post(`${API_URL}/media/web`, {
+        name: webName,
+        url: webUrl,
+        duration: webDuration,
+      });
+      setWebName('');
+      setWebUrl('');
+      setWebDuration(30);
+      setIsWebModalOpen(false);
+      await fetchMedia();
+    } catch (error) {
+      console.error('Failed to add webpage', error);
+    }
+  };
+
+  const handleTextAdd = async (event) => {
+    event.preventDefault();
+    if (!textSlide.name || !textSlide.content) return;
+
+    try {
+      await axios.post(`${API_URL}/media/text`, textSlide);
+      setTextSlide({
+        name: '',
+        content: '',
+        duration: 12,
+        settings: {
+          textColor: '#f8fafc',
+          backgroundColor: '#0f172a',
+          accentColor: '#0ea5e9',
+          fontSize: 42,
+          align: 'center',
+        },
+      });
+      setIsTextModalOpen(false);
+      await fetchMedia();
+    } catch (error) {
+      console.error('Failed to add text slide', error);
+    }
+  };
+
+  const deleteMedia = async (item) => {
+    if (!window.confirm(`Medium "${item.name}" wirklich loeschen?`)) return;
+
+    try {
+      await axios.delete(`${API_URL}/media/${item.id}`);
+      await fetchMedia();
+    } catch (error) {
+      console.error('Failed to delete media', error);
+    }
+  };
+
+  const query = search.trim().toLowerCase();
+  const filteredMedia = media.filter((item) => {
+    if (filter !== 'all' && item.type !== filter) return false;
+    if (!query) return true;
+
+    const haystack = [item.name, item.url, item.filepath, item.content]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(query);
+  });
+
+  return (
+    <div>
+      <div className="page-header">
         <div>
-            <div className="page-header">
-                <h1>Medien Bibliothek</h1>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn btn-primary" onClick={() => setIsUploadModalOpen(true)}>
-                        <Upload size={18} /> Datei hochladen
-                    </button>
-                    <button className="btn btn-secondary" onClick={() => setIsWebModalOpen(true)}>
-                        <Globe size={18} /> Webseite hinzufügen
-                    </button>
-                </div>
-            </div>
-
-            {media.length === 0 ? (
-                <div className="glass-card empty-state" style={{ padding: '80px 40px' }}>
-                    <ImageIcon size={64} style={{ opacity: 0.15, marginBottom: '24px' }} />
-                    <h3 style={{ color: 'var(--text-dim)' }}>Keine Medien vorhanden</h3>
-                    <p style={{ color: 'var(--text-dim)', maxWidth: '400px', margin: '0 auto', fontSize: '0.95rem' }}>
-                        Laden Sie Bilder, Videos oder PDF-Dokumente hoch oder fügen Sie Webseiten-URLs hinzu, um sie in Ihren Playlisten zu verwenden.
-                    </p>
-                </div>
-            ) : (
-                <div className="glass-card">
-                    <div className="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '120px' }}>Typ</th>
-                                    <th>Name</th>
-                                    <th>Pfad / URL</th>
-                                    <th style={{ width: '140px' }}>Dauer (Sek)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {media.map(item => (
-                                    <tr key={item.id}>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                {getIconForType(item.type)}
-                                                <span style={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.85rem' }}>{item.type}</span>
-                                            </div>
-                                        </td>
-                                        <td style={{ fontWeight: 600 }}>{item.name}</td>
-                                        <td style={{ maxWidth: '300px' }}>
-                                            {item.type === 'webpage' ?
-                                                <a href={item.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', borderBottom: '1px solid currentColor' }}>{item.url}</a> :
-                                                <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{item.filepath}</span>
-                                            }
-                                        </td>
-                                        <td style={{ color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                                            {item.type === 'video' ? 
-                                                <span className="badge badge-primary" style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80' }}>Auto</span> : 
-                                                item.duration
-                                            }
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* Upload Modal */}
-            {isUploadModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '480px' }}>
-                        <h2 style={{ marginBottom: '24px' }}>Medien hochladen</h2>
-                        <form onSubmit={handleFileUpload}>
-                            <div className="form-group">
-                                <label>Datei auswählen</label>
-                                <div style={{ 
-                                    border: '2px dashed var(--border)', 
-                                    padding: '32px', 
-                                    borderRadius: '12px', 
-                                    textAlign: 'center',
-                                    background: 'var(--bg-secondary)',
-                                    cursor: 'pointer'
-                                }} onClick={() => document.getElementById('fileInput').click()}>
-                                    <Upload size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>{file ? file.name : 'Klicke zum Auswählen oder Drag & Drop'}</p>
-                                    <input
-                                        id="fileInput"
-                                        type="file"
-                                        accept="image/*,video/*,application/pdf"
-                                        onChange={(e) => {
-                                            const f = e.target.files[0];
-                                            setFile(f);
-                                            if (f && !uploadName) setUploadName(f.name.split('.')[0]);
-                                        }}
-                                        style={{ display: 'none' }}
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label>Anzeigename</label>
-                                <input
-                                    type="text"
-                                    value={uploadName}
-                                    onChange={(e) => setUploadName(e.target.value)}
-                                    placeholder="Name für die Bibliothek"
-                                    className="form-control"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Anzeigedauer (Sekunden)</label>
-                                <input
-                                    type="number"
-                                    value={uploadDuration}
-                                    onChange={(e) => setUploadDuration(Number(e.target.value))}
-                                    className="form-control"
-                                    min="1"
-                                />
-                                <p style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
-                                    Bei Videos wird dieser Wert ignoriert – das Video wird immer in voller Länge abgespielt.
-                                </p>
-                            </div>
-                            <div className="modal-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => setIsUploadModalOpen(false)}>Abbrechen</button>
-                                <button type="submit" className="btn btn-primary" disabled={!file || !uploadName}>
-                                    <Upload size={18} /> Hochladen
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Webpage Modal */}
-            {isWebModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '480px' }}>
-                        <h2 style={{ marginBottom: '24px' }}>Webseite hinzufügen</h2>
-                        <form onSubmit={handleWebAdd}>
-                            <div className="form-group">
-                                <label>URL</label>
-                                <input
-                                    type="url"
-                                    value={webUrl}
-                                    onChange={(e) => setWebUrl(e.target.value)}
-                                    placeholder="https://deine-webseite.de"
-                                    className="form-control"
-                                    required
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Anzeigename</label>
-                                <input
-                                    type="text"
-                                    value={webName}
-                                    onChange={(e) => setWebName(e.target.value)}
-                                    placeholder="Titel für die Bibliothek"
-                                    className="form-control"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Anzeigedauer (Sekunden)</label>
-                                <input
-                                    type="number"
-                                    value={webDuration}
-                                    onChange={(e) => setWebDuration(Number(e.target.value))}
-                                    className="form-control"
-                                    min="1"
-                                />
-                            </div>
-                            <div className="modal-actions">
-                                <button type="button" className="btn btn-secondary" onClick={() => setIsWebModalOpen(false)}>Abbrechen</button>
-                                <button type="submit" className="btn btn-primary" disabled={!webUrl || !webName}>
-                                    <LinkIcon size={18} /> URL hinzufügen
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+          <h1>Medienbibliothek</h1>
+          <p className="page-subtitle">Dateien, Webseiten und Text-Slides fuer Playlisten und Layouts.</p>
         </div>
-    );
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => setIsTextModalOpen(true)}>
+            <Type size={18} />
+            Text-Slide
+          </button>
+          <button className="btn btn-secondary" onClick={() => setIsWebModalOpen(true)}>
+            <Globe size={18} />
+            Webseite
+          </button>
+          <button className="btn btn-primary" onClick={() => setIsUploadModalOpen(true)}>
+            <Upload size={18} />
+            Datei hochladen
+          </button>
+        </div>
+      </div>
+
+      <div className="toolbar">
+        <div className="toolbar-search">
+          <Search size={16} />
+          <input
+            className="form-control"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Suchen nach Name, URL oder Inhalt"
+          />
+        </div>
+        <select className="form-control compact-select" value={filter} onChange={(event) => setFilter(event.target.value)}>
+          <option value="all">Alle Typen</option>
+          <option value="image">Bild</option>
+          <option value="video">Video</option>
+          <option value="document">Dokument</option>
+          <option value="webpage">Webseite</option>
+          <option value="text">Text</option>
+        </select>
+      </div>
+
+      {filteredMedia.length === 0 ? (
+        <div className="glass-card empty-state large">
+          <ImageIcon size={64} style={{ opacity: 0.15 }} />
+          <h3>Keine Medien gefunden</h3>
+          <p>Lege Medien an oder passe Suche und Filter an.</p>
+        </div>
+      ) : (
+        <div className="media-grid">
+          {filteredMedia.map((item) => (
+            <div key={item.id} className="glass-card media-card">
+              <div className="media-preview">{renderPreview(item)}</div>
+              <div className="media-card-body">
+                <div className="entity-title-row">
+                  <span className="entity-title">{item.name}</span>
+                  <span className={`badge badge-${item.type}`}>{item.type}</span>
+                </div>
+                <div className="entity-meta">
+                  {item.type === 'webpage'
+                    ? truncate(item.url, 72)
+                    : item.type === 'text'
+                      ? truncate(item.content, 72)
+                      : truncate(item.filepath, 72)}
+                </div>
+                <div className="media-card-footer">
+                  <span>{item.type === 'video' ? 'Bis Video-Ende' : `${item.duration || 0}s`}</span>
+                  <div className="row-actions">
+                    {item.url ? (
+                      <a className="btn-icon" href={item.url} target="_blank" rel="noreferrer">
+                        <LinkIcon size={16} />
+                      </a>
+                    ) : null}
+                    <button className="btn-icon danger" onClick={() => deleteMedia(item)}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isUploadModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-narrow">
+            <h3>Datei hochladen</h3>
+            <form onSubmit={handleFileUpload}>
+              <div className="form-group">
+                <label>Datei</label>
+                <input
+                  className="form-control"
+                  type="file"
+                  accept="image/*,video/*,application/pdf"
+                  onChange={(event) => {
+                    const nextFile = event.target.files?.[0] || null;
+                    setFile(nextFile);
+                    if (nextFile && !uploadName) {
+                      setUploadName(nextFile.name.replace(/\.[^.]+$/, ''));
+                    }
+                  }}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Name</label>
+                <input className="form-control" value={uploadName} onChange={(event) => setUploadName(event.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Dauer (Sekunden)</label>
+                <input
+                  className="form-control"
+                  type="number"
+                  min="1"
+                  value={uploadDuration}
+                  onChange={(event) => setUploadDuration(Number(event.target.value))}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setIsUploadModalOpen(false)}>
+                  Abbrechen
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Hochladen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isWebModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-narrow">
+            <h3>Webseite hinzufuegen</h3>
+            <form onSubmit={handleWebAdd}>
+              <div className="form-group">
+                <label>Name</label>
+                <input className="form-control" value={webName} onChange={(event) => setWebName(event.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>URL</label>
+                <input className="form-control" type="url" value={webUrl} onChange={(event) => setWebUrl(event.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Dauer (Sekunden)</label>
+                <input
+                  className="form-control"
+                  type="number"
+                  min="1"
+                  value={webDuration}
+                  onChange={(event) => setWebDuration(Number(event.target.value))}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setIsWebModalOpen(false)}>
+                  Abbrechen
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Speichern
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isTextModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-wide">
+            <h3>Text-Slide erstellen</h3>
+            <div className="split-panel">
+              <form className="glass-panel" onSubmit={handleTextAdd}>
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    className="form-control"
+                    value={textSlide.name}
+                    onChange={(event) => setTextSlide((current) => ({ ...current, name: event.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Textinhalt</label>
+                  <textarea
+                    className="form-control"
+                    rows={6}
+                    value={textSlide.content}
+                    onChange={(event) => setTextSlide((current) => ({ ...current, content: event.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-grid two-columns">
+                  <div className="form-group">
+                    <label>Dauer</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="1"
+                      value={textSlide.duration}
+                      onChange={(event) => setTextSlide((current) => ({ ...current, duration: Number(event.target.value) }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Font Size</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="16"
+                      max="140"
+                      value={textSlide.settings.fontSize}
+                      onChange={(event) => setTextSlide((current) => ({
+                        ...current,
+                        settings: { ...current.settings, fontSize: Number(event.target.value) },
+                      }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-grid two-columns">
+                  <div className="form-group">
+                    <label>Textfarbe</label>
+                    <input
+                      className="form-control"
+                      value={textSlide.settings.textColor}
+                      onChange={(event) => setTextSlide((current) => ({
+                        ...current,
+                        settings: { ...current.settings, textColor: event.target.value },
+                      }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Hintergrund</label>
+                    <input
+                      className="form-control"
+                      value={textSlide.settings.backgroundColor}
+                      onChange={(event) => setTextSlide((current) => ({
+                        ...current,
+                        settings: { ...current.settings, backgroundColor: event.target.value },
+                      }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Akzentfarbe</label>
+                  <input
+                    className="form-control"
+                    value={textSlide.settings.accentColor}
+                    onChange={(event) => setTextSlide((current) => ({
+                      ...current,
+                      settings: { ...current.settings, accentColor: event.target.value },
+                    }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Ausrichtung</label>
+                  <select
+                    className="form-control"
+                    value={textSlide.settings.align}
+                    onChange={(event) => setTextSlide((current) => ({
+                      ...current,
+                      settings: { ...current.settings, align: event.target.value },
+                    }))}
+                  >
+                    <option value="left">Links</option>
+                    <option value="center">Zentriert</option>
+                    <option value="right">Rechts</option>
+                  </select>
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsTextModalOpen(false)}>
+                    Abbrechen
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Text-Slide speichern
+                  </button>
+                </div>
+              </form>
+
+              <div className="glass-panel">
+                <h4>Vorschau</h4>
+                <div
+                  className="text-slide-preview"
+                  style={{
+                    background: textSlide.settings.backgroundColor,
+                    color: textSlide.settings.textColor,
+                    textAlign: textSlide.settings.align,
+                  }}
+                >
+                  <div className="text-slide-accent" style={{ background: textSlide.settings.accentColor }} />
+                  <div style={{ fontSize: `${textSlide.settings.fontSize}px` }}>
+                    {textSlide.content || 'Hier erscheint deine Nachricht'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderPreview(item) {
+  switch (item.type) {
+    case 'image':
+      return <img src={`${window.location.origin}${item.filepath}`} alt={item.name} className="media-image-preview" />;
+    case 'video':
+      return (
+        <div className="media-placeholder">
+          <Video size={28} />
+          <span>Video</span>
+        </div>
+      );
+    case 'document':
+      return (
+        <div className="media-placeholder">
+          <FileText size={28} />
+          <span>PDF</span>
+        </div>
+      );
+    case 'webpage':
+      return (
+        <div className="media-placeholder">
+          <Globe size={28} />
+          <span>{truncate(item.url, 42)}</span>
+        </div>
+      );
+    case 'text':
+      return (
+        <div
+          className="text-card-preview"
+          style={{
+            background: item.settings?.backgroundColor || '#0f172a',
+            color: item.settings?.textColor || '#f8fafc',
+            textAlign: item.settings?.align || 'center',
+          }}
+        >
+          <div className="text-card-preview-accent" style={{ background: item.settings?.accentColor || '#0ea5e9' }} />
+          <span>{truncate(item.content, 70)}</span>
+        </div>
+      );
+    default:
+      return (
+        <div className="media-placeholder">
+          <ImageIcon size={28} />
+        </div>
+      );
+  }
 }
 
 export default MediaPage;

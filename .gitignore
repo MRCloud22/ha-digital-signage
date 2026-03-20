@@ -1,6 +1,8 @@
 node_modules/
+.npm-cache/
 .env
 data/
 uploads/
 .DS_Store
 *.db
+addon/frontend/src/lib/formatters.js

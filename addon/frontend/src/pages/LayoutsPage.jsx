@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useEffectEvent } from 'react';
 import axios from 'axios';
 import { Plus, Trash2, LayoutDashboard, MonitorSmartphone, Monitor, PenSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,10 +10,6 @@ const LayoutsPage = () => {
     const [newLayout, setNewLayout] = useState({ name: '', orientation: 'landscape', resolution: '1920x1080' });
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchLayouts();
-    }, []);
-
     const fetchLayouts = async () => {
         try {
             const res = await axios.get('/api/layouts');
@@ -24,6 +20,14 @@ const LayoutsPage = () => {
             setLoading(false);
         }
     };
+
+    const fetchLayoutsEffect = useEffectEvent(() => {
+        fetchLayouts();
+    });
+
+    useEffect(() => {
+        fetchLayoutsEffect();
+    }, []);
 
     const handleCreateLayout = async (e) => {
         e.preventDefault();

@@ -1,149 +1,197 @@
 body.player-mode,
 .player-mode #root {
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background-color: #000;
-    color: var(--text-main);
-    font-family: 'Inter', sans-serif;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
 }
 
-/* Base Root Container for non-playing states */
 .player-page-root {
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(circle at center, #0f172a 0%, #000000 100%);
-    padding: 20px;
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(14, 165, 233, 0.18), transparent 35%),
+    linear-gradient(180deg, #08111f 0%, #000 100%);
 }
 
-/* Playing state root */
 .player-content-root {
-    width: 100vw;
-    height: 100vh;
-    position: relative;
-    overflow: hidden;
-    background: #000;
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
 }
 
-/* Pairing & Status Cards */
-.pairing-card, .status-card {
-    max-width: 500px;
-    width: 100%;
-    padding: 48px;
-    text-align: center;
-    animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+.layout-zone-shell {
+  position: absolute;
+  overflow: hidden;
 }
 
-@keyframes fadeInScale {
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+.pairing-card,
+.status-card {
+  width: min(520px, 100%);
+  padding: 44px;
+  text-align: center;
+}
+
+.pairing-header {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
+.pairing-header h2,
+.status-card h2 {
+  margin: 0;
+  font-size: 2.4rem;
+}
+
+.pairing-header p,
+.status-card p {
+  margin: 0;
+  color: var(--text-dim);
 }
 
 .pairing-icon {
-    color: var(--primary);
-    margin-bottom: 24px;
-    filter: drop-shadow(0 0 15px rgba(14, 165, 233, 0.4));
-}
-
-.success-icon {
-    width: 64px;
-    height: 64px;
-    background: var(--success);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    margin: 0 auto 24px;
-    box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
-}
-
-.pairing-card h2, .status-card h2 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 16px;
-    letter-spacing: -0.02em;
-}
-
-.pairing-card p, .status-card p {
-    color: var(--text-dim);
-    line-height: 1.6;
-    margin-bottom: 32px;
+  color: var(--primary);
 }
 
 .pairing-code-display {
-    font-size: 4.5rem;
-    font-weight: 900;
-    letter-spacing: 0.1em;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 24px;
-    border-radius: 12px;
-    margin-bottom: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
-    font-family: 'JetBrains Mono', monospace;
+  margin: 28px 0;
+  padding: 22px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 4rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 
-.pairing-footer, .screen-info {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    background: rgba(0,0,0,0.2);
-    padding: 8px 16px;
-    border-radius: 20px;
-    display: inline-block;
+.pairing-footer,
+.screen-info {
+  display: inline-flex;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  font-size: 0.88rem;
 }
 
-/* Loader */
 .loader {
-    text-align: center;
+  text-align: center;
 }
+
 .spinner {
-    width: 48px;
-    height: 48px;
-    border: 3px solid rgba(255,255,255,0.1);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    margin: 0 auto 16px;
-    animation: spin 1s linear infinite;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--primary);
+  animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.success-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  font-weight: 700;
 }
 
-/* Media Renderer Components */
+.zone-player-shell,
+.zone-player-media {
+  width: 100%;
+  height: 100%;
+}
+
+.zone-player-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.zone-player-media {
+  display: grid;
+  place-items: center;
+}
+
+.zone-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.player-image,
+.player-video,
+.player-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.player-image,
+.player-video {
+  object-fit: contain;
+  background: #000;
+}
+
+.text-slide-player {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  padding: 7vw;
+}
+
+.text-slide-player-accent {
+  width: min(240px, 40%);
+  height: 5px;
+  border-radius: 999px;
+}
+
+.text-slide-player-content {
+  max-width: 100%;
+  line-height: 1.1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .ticker-container {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    z-index: 100;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .ticker-content {
-    display: inline-block;
-    padding-left: 100vw;
-    white-space: nowrap;
-    animation: ticker-slide linear infinite;
-    will-change: transform;
+  display: inline-block;
+  padding-left: 100vw;
+  white-space: nowrap;
+  animation: ticker-slide linear infinite;
 }
 
 @keyframes ticker-slide {
-    from { transform: translateX(0); }
-    to { transform: translateX(calc(-100% - 100vw)); }
-}
+  from {
+    transform: translateX(0);
+  }
 
-/* Scaling Utilities used in PlayerPage.jsx */
-.w-full { width: 100%; }
-.h-full { height: 100%; }
+  to {
+    transform: translateX(calc(-100% - 100vw));
+  }
+}
