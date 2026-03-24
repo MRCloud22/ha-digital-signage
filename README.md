@@ -1,46 +1,68 @@
 # HA Digital Signage
 
-Home-Assistant-Add-on fuer Digital Signage mit Raspberry-Pi-Clients.
+Digital-Signage-Loesung als Home-Assistant-Add-on mit React-Dashboard, Express/SQLite-Backend und Raspberry-Pi-Player.
 
-## Was neu ist
+## Aktueller Stand
 
-Diese Ausbaustufe schiebt das Projekt deutlich naeher an Yodeck-artige Workflows:
+Das Projekt ist inzwischen deutlich naeher an einem Yodeck-aehnlichen Workflow:
 
 - Screen-Pairing mit Live-Heartbeat und Online/Offline-Status
-- Default-Zuordnung pro Screen fuer Playlist oder Layout
-- Zeitplaene pro Screen mit Prioritaet, Tagesauswahl, Uhrzeiten und Datumsfenstern
+- Screen-Gruppen mit Bulk-Assignment
+- direkte Playlist- oder Layout-Zuordnung pro Screen
+- Zeitplaene mit Prioritaet, Tagesauswahl, Uhrzeiten und Datumsfenstern
 - Layouts mit mehreren Zonen
 - Medienbibliothek fuer Bilder, Videos, PDFs, Webseiten und Text-Slides
-- Playlist-Preview mit serverseitig aufgeloester Sub-Playlist-Hierarchie
-- RSS-Ticker pro Playlist
-- Player-Runtime ueber zentrale API statt verteilter Client-Logik
+- serverseitige Playlist-Preview mit aufgeloester Sub-Playlist-Hierarchie
+- Proof-of-Play und Player-Logs im Monitoring
+- Alert-Center fuer Offline-Screens, stale Agents, Playback-Fehler und fehlgeschlagene Device-Kommandos
+- Offline-Caching fuer Runtime, Playlist-Previews und Mediendateien auf dem Pi
+- Provisioning-Profile und Installer-Links fuer neue Raspberry Pis
+- Device Health fuer Player und Raspberry Pi
+- Remote Device Control fuer Reload, Player-Neustart, Volume, Rotation, Reboot, Shutdown und Screenshot-Capture
+- OTA fuer Device-Agent und Player-Launcher
+- Watchdog-, Recovery- und Health-Policies pro Pi bzw. Provisioning-Profil
 
 ## Architektur
 
-- `addon/server`: Express + SQLite API fuer Inhalte, Screens, Scheduling und Runtime
+- `addon/server`: Express + SQLite API fuer Inhalte, Screens, Scheduling, Monitoring und Provisioning
 - `addon/frontend`: React/Vite Dashboard und Player-Oberflaeche
-- Raspberry Pi / Browser-Client: laedt `/#/player`, koppelt sich per PIN und erhaelt Runtime-Updates via Socket.IO
+- Raspberry Pi / Browser-Client: laedt `/#/player`, arbeitet mit Socket.IO und faellt bei Netzproblemen auf lokalen Cache zurueck
 
 ## Kern-Workflows
 
-### 1. Screen koppeln
+### 1. Screen per PIN koppeln
 
 1. `/#/player` auf dem Zielgeraet oeffnen
-2. Pairing-Code im Dashboard unter `Screens` eingeben
-3. Basis-Zuordnung oder Zeitplaene hinterlegen
+2. Pairing-Code im Dashboard unter `Screens` bestaetigen
+3. Playlist, Layout, Gruppe oder Zeitplaene zuweisen
 
-### 2. Inhalte anlegen
+### 2. Screen per Installer provisionieren
+
+1. Im Dashboard unter `Provisioning` ein Profil anlegen
+2. `server_url` auf die direkt vom Pi erreichbare Add-on-URL setzen
+3. optional Gruppe, Playlist oder Layout als Startzuweisung hinterlegen
+4. Watchdog-, OTA- und Threshold-Policies fuer den Pi definieren
+5. Installer-Link oder `curl ... | bash` erzeugen
+6. das Pi-Script auf einem frischen Raspberry Pi OS ausfuehren oder die FullPageOS-URL nutzen
+7. der Player claimed sich danach automatisch ohne PIN
+
+### 3. Inhalte und Kampagnen pflegen
 
 1. Medien hochladen oder Webseiten/Text-Slides erstellen
-2. Playlist anlegen
-3. Inhalte direkt oder als Sub-Playlisten in die Playlist ziehen
-4. Optional RSS-Ticker konfigurieren
+2. Playlisten anlegen und Inhalte bzw. Sub-Playlisten zuweisen
+3. optional RSS-Ticker konfigurieren
+4. Layout oder Einzel-Playlist direkt am Screen oder ueber Gruppen/Schedules ausspielen
 
-### 3. Layout oder Zeitplan zuweisen
+### 4. Betrieb und Monitoring
 
-1. Entweder ein Layout mit Zonen bauen
-2. Oder eine einzelne Playlist zuweisen
-3. Fuer Yodeck-aehnliche Rotationen: Zeitplaene direkt am Screen pflegen
+1. `Monitoring` zeigt Alerts, Proof-of-Play, Player-Fehler und Verbindungsereignisse
+2. der Player cached Runtime, Previews und Dateien fuer Offline-Betrieb
+3. das Dashboard zeigt Online-/Offline-Status und Heartbeats
+4. `Screens` enthaelt jetzt Device Management fuer Health, Screenshot-Vorschau, OTA-Kommandos und Recovery-Policies
+
+## Raspberry Pi Setup
+
+Die aktuelle Pi-Anleitung mit Provisioning-Workflow liegt in [Raspberry_Pi_Setup.md](/D:/Users/Andreas/Documents/digital%20signage/Raspberry_Pi_Setup.md).
 
 ## Entwicklung
 
@@ -49,6 +71,7 @@ Diese Ausbaustufe schiebt das Projekt deutlich naeher an Yodeck-artige Workflows
 ```bash
 cd addon/frontend
 npm install
+npm run lint
 npm run build
 ```
 
@@ -62,8 +85,6 @@ node index.js
 
 ## Naechste sinnvolle Ausbaustufen
 
-- Screen-Gruppen und Bulk-Assignment
-- Proof-of-Play / Playback-Logs
-- Offline-Caching fuer Raspberry Pis
-- Remote Reboot / Screenshot / Device Diagnostics
-- Rollen / Multi-User / Freigaben
+- Rollen, Benutzer und Audit-Log
+- Benachrichtigungsziele fuer Alerts wie Home Assistant, Webhooks oder E-Mail
+- tiefere OTA-Stufen fuer Raspberry Pi OS selbst, zum Beispiel Paket-/OS-Upgrades mit Wartungsfenstern

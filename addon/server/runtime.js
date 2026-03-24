@@ -281,7 +281,15 @@ async function getSchedulesForScreen(db, screenId) {
 async function evaluateScreenRuntime(db, screenId, now = new Date()) {
     const screen = await dbGet(
         db,
-        `SELECT * FROM screens WHERE id = ?`,
+        `SELECT
+            s.*,
+            g.name as group_name,
+            g.description as group_description,
+            g.default_playlist_id as group_default_playlist_id,
+            g.default_layout_id as group_default_layout_id
+         FROM screens s
+         LEFT JOIN screen_groups g ON g.id = s.screen_group_id
+         WHERE s.id = ?`,
         [screenId]
     );
 
@@ -293,7 +301,7 @@ async function evaluateScreenRuntime(db, screenId, now = new Date()) {
     let mode = 'none';
     let playlistId = screen.active_playlist_id || null;
     let layoutId = screen.active_layout_id || null;
-    let source = 'default';
+    let source = 'screen';
 
     if (activeSchedule) {
         source = 'schedule';
@@ -304,6 +312,10 @@ async function evaluateScreenRuntime(db, screenId, now = new Date()) {
             playlistId = activeSchedule.target_id;
             layoutId = null;
         }
+    } else if (!layoutId && !playlistId) {
+        playlistId = screen.group_default_playlist_id || null;
+        layoutId = screen.group_default_layout_id || null;
+        source = playlistId || layoutId ? 'group' : 'none';
     }
 
     let layout = null;
@@ -319,6 +331,10 @@ async function evaluateScreenRuntime(db, screenId, now = new Date()) {
 
     if (mode === 'none' && playlistId) {
         mode = 'playlist';
+    }
+
+    if (mode === 'none' && !playlistId && !layoutId && !activeSchedule) {
+        source = 'none';
     }
 
     return {

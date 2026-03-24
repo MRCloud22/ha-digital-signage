@@ -8,6 +8,77 @@ export const WEEKDAYS = [
   { value: 0, label: 'So' },
 ];
 
+export const DEFAULT_DEVICE_POLICY = Object.freeze({
+  watchdogEnabled: true,
+  otaChannel: 'stable',
+  autoAgentUpdates: false,
+  autoLauncherUpdates: false,
+  playerRestartGraceSeconds: 45,
+  rebootAfterConsecutivePlayerFailures: 3,
+  maxCpuTemperatureC: 82,
+  maxDiskUsedPercent: 94,
+  maxMemoryUsedPercent: 96,
+});
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+
+  const normalized = `${value}`.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
+export function normalizeDevicePolicy(value = {}) {
+  const safeValue = typeof value === 'object' && value !== null ? value : {};
+  const otaChannel = `${safeValue.otaChannel || DEFAULT_DEVICE_POLICY.otaChannel}`.trim().toLowerCase();
+
+  return {
+    watchdogEnabled: normalizeBoolean(safeValue.watchdogEnabled, DEFAULT_DEVICE_POLICY.watchdogEnabled),
+    otaChannel: ['stable', 'beta'].includes(otaChannel) ? otaChannel : DEFAULT_DEVICE_POLICY.otaChannel,
+    autoAgentUpdates: normalizeBoolean(safeValue.autoAgentUpdates, DEFAULT_DEVICE_POLICY.autoAgentUpdates),
+    autoLauncherUpdates: normalizeBoolean(safeValue.autoLauncherUpdates, DEFAULT_DEVICE_POLICY.autoLauncherUpdates),
+    playerRestartGraceSeconds: clampNumber(
+      safeValue.playerRestartGraceSeconds,
+      15,
+      600,
+      DEFAULT_DEVICE_POLICY.playerRestartGraceSeconds,
+    ),
+    rebootAfterConsecutivePlayerFailures: clampNumber(
+      safeValue.rebootAfterConsecutivePlayerFailures,
+      1,
+      10,
+      DEFAULT_DEVICE_POLICY.rebootAfterConsecutivePlayerFailures,
+    ),
+    maxCpuTemperatureC: clampNumber(
+      safeValue.maxCpuTemperatureC,
+      60,
+      100,
+      DEFAULT_DEVICE_POLICY.maxCpuTemperatureC,
+    ),
+    maxDiskUsedPercent: clampNumber(
+      safeValue.maxDiskUsedPercent,
+      70,
+      99,
+      DEFAULT_DEVICE_POLICY.maxDiskUsedPercent,
+    ),
+    maxMemoryUsedPercent: clampNumber(
+      safeValue.maxMemoryUsedPercent,
+      70,
+      99,
+      DEFAULT_DEVICE_POLICY.maxMemoryUsedPercent,
+    ),
+  };
+}
+
 export function parseScheduleDays(daysValue) {
   if (!daysValue) return [];
 

@@ -1,85 +1,111 @@
-# Digital Signage Client (Raspberry Pi Setup)
+# Raspberry Pi Setup
 
-Diese Anleitung beschreibt, wie ein Raspberry Pi konfiguriert wird, um automatisch die Digital Signage Player Web-App im Kiosk-Modus zu starten.
+Diese Anleitung beschreibt den aktuellen Provisioning-Workflow fuer neue Raspberry Pis.
 
 ## Voraussetzungen
-* Ein Raspberry Pi (Empfohlen: Pi 3 B+ oder Pi 4)
-* Eine SD-Karte (mind. 8GB)
-* **Zwei Wege zur Installation:**
-    1. **Der schnelle Weg:** Nutze **FullPageOS** (vorkonfigurierter Kiosk-Modus).
-    2. **Der manuelle Weg:** Nutze das Standard **Raspberry Pi OS** (falls du mehr Kontrolle brauchst).
 
----
+- Raspberry Pi 3 B+, Pi 4 oder neuer
+- SD-Karte mit mindestens 8 GB
+- eine direkt vom Pi erreichbare Server-URL des Add-ons, zum Beispiel `http://192.168.1.65:9999`
+- optional ein vorbereitetes Provisioning-Profil im Dashboard unter `Provisioning`
 
-## Option A: Der schnelle Weg (FullPageOS) – EMPFOHLEN
-FullPageOS ist ein minimales System, das direkt in einen Webbrowser bootet.
+Wichtig: Fuer den Pi muss die `server_url` direkt erreichbar sein. In vielen Setups ist das die Home-Assistant-IP plus Add-on-Port und nicht die normale Home-Assistant-Frontend-URL.
 
-1. Öffne den **Raspberry Pi Imager**.
-2. Klicke auf **"OS wählen"** -> **"Other specific-purpose OS"** -> **"FullPageOS"**.
-3. Wähle deine SD-Karte und klicke auf **"Schreiben"**.
-4. **WICHTIG:** Bevor du die Karte in den Pi steckst, navigiere am PC in das `bootfs` Laufwerk (die SD-Karte).
-5. Suche die Datei **`fullpageos.txt`** und öffne sie.
-6. Ersetze den Inhalt durch deine Add-on URL:
-   `http://192.168.1.65:9999/#/player`
-7. Speichere die Datei, stecke die Karte in den Pi und starte ihn.
-8. Fahre fort mit **Schritt 3 (Pairing)**.
+## Option A: Provisioning mit Raspberry Pi OS
 
----
+Das ist der bevorzugte Weg fuer normale Raspberry Pi OS Installationen.
 
-## Option B: Der manuelle Weg (Standard RPi OS)
-Falls du FullPageOS nicht nutzen möchtest, kannst du ein Standard-System aufsetzen:
+### 1. Provisioning-Profil anlegen
 
-### Schritt 1: SD-Karte flashen & URL hinterlegen
-1. Flashe **Raspberry Pi OS (mit Desktop)** via Imager.
-2. Erstelle auf der SD-Karte (`bootfs`) eine Datei namens **`digital_signage_url.txt`**.
-3. Schreibe die IP deines Servers rein: `http://192.168.1.65:9999/#/player`
-4. Stecke die Karte in den Pi.
+1. Oeffne das Dashboard und gehe auf `Provisioning`.
+2. Lege ein neues Profil an.
+3. Setze `server_url` auf die vom Pi erreichbare Add-on-URL.
+4. Hinterlege optional:
+   - `Default Screen Name`
+   - `Screen Gruppe`
+   - Start-Playlist oder Start-Layout
+   - Screen Notes
+   - Watchdog-, OTA- und Threshold-Policy fuer den Pi
+5. Speichere das Profil.
 
-### Schritt 2: Kiosk-Modus manuell einrichten
-Starte den Raspberry Pi. Öffne ein Terminal und folge diesen Schritten:
+### 2. Installer erzeugen
 
-1. **Abhängigkeiten installieren:**
-   ```bash
-   sudo apt update
-   sudo apt install -y chromium-browser xdotool unclutter
-   ```
+1. Waehle das Profil aus.
+2. Erzeuge einen neuen Installer.
+3. Kopiere entweder:
+   - `Install Command`
+   - oder `Installer URL`
 
-2. **Autostart-Skript anlegen:**
-   Erstelle eine Datei für den automatischen Start:
-   ```bash
-   mkdir -p ~/.config/lxsession/LXDE-pi
-   nano ~/.config/lxsession/LXDE-pi/autostart
-   ```
+Beispiel:
 
-3. **Inhalt der Autostart-Datei:**
-   Füge den folgenden Code ein. Dieses Skript liest die URL von der SD-Karte und startet Chromium im Kiosk-Modus.
+```bash
+curl -fsSL 'http://192.168.1.65:9999/api/provisioning/install/DEIN_TOKEN.sh' | bash
+```
 
-   ```bash
-   @lxpanel --profile LXDE-pi
-   @pcmanfm --desktop --profile LXDE-pi
-   @xscreensaver -no-splash
-   
-   # Mauszeiger verstecken
-   @unclutter -idle 0.1 -root
+### 3. Raspberry Pi OS installieren
 
-   # Bildschirmschoner deaktivieren
-   @xset s off
-   @xset -dpms
-   @xset s noblank
+1. Flashe `Raspberry Pi OS (Desktop)` mit dem Raspberry Pi Imager.
+2. Starte den Pi und melde dich an.
+3. Oeffne ein Terminal.
+4. Fuehre den erzeugten Install-Command aus.
+5. Starte den Pi neu:
 
-   # Chromium im Kiosk-Modus starten (URL aus der boot-Partition lesen)
-   @bash -c "URL=\$(cat /boot/firmware/digital_signage_url.txt || cat /boot/digital_signage_url.txt); chromium-browser --kiosk --noerrdialogs --disable-infobars --check-for-update-interval=31536000 \$URL"
-   ```
+```bash
+sudo reboot
+```
 
-4. **Speichern und Neustarten:**
-   Speichere die Datei (`Strg+O`, `Enter`, `Strg+X`) und starte den Raspberry Pi neu:
-   ```bash
-   sudo reboot
-   ```
+### 4. Ergebnis
 
-## Schritt 3: Pairing im Dashboard
-1. Nach dem Neustart öffnet der Raspberry Pi den Browser.
-2. Da er noch nicht authentifiziert ist, wird ein **6-stelliger PIN** auf dem Bildschirm angezeigt.
-3. Öffne das Home Assistant Add-on Dashboard (`dein-ha-login.local:8123/digital-signage`).
-4. Klicke bei "Screens" auf "Neuen Screen koppeln" und gib die PIN ein.
-5. Der Raspberry Pi verbindet sich nun dauerhaft via WebSockets und wartet auf eine Playlist!
+Nach dem Neustart passiert Folgendes automatisch:
+
+- Chromium wird im Kiosk-Modus eingerichtet
+- der Player startet ueber Autostart
+- ein Device-Agent als systemd-Service wird installiert
+- das Geraet claimed sich ueber den einmaligen Provisioning-Link
+- der neue Screen taucht direkt im Dashboard auf, ohne PIN-Pairing
+- Remote Device Control, Pi-Health und Screenshot-Capture sind danach im Screen-Dashboard verfuegbar
+- OTA fuer Device-Agent und Launcher ist danach im Screen-Dashboard verfuegbar
+- Watchdog und Recovery laufen nach der ersten Synchronisation automatisch nach der hinterlegten Policy
+
+## Option B: FullPageOS
+
+Wenn du FullPageOS nutzen willst, kannst du statt des Scripts direkt den erzeugten `FullPageOS URL` verwenden.
+
+### 1. FullPageOS flashen
+
+1. Oeffne den Raspberry Pi Imager.
+2. Waehle `Other specific-purpose OS` -> `FullPageOS`.
+3. Schreibe das Image auf die SD-Karte.
+
+### 2. Start-URL setzen
+
+1. Oeffne nach dem Flashen die Boot-Partition.
+2. Bearbeite `fullpageos.txt`.
+3. Trage dort den `FullPageOS URL` aus dem Dashboard ein.
+
+Beispiel:
+
+```text
+http://192.168.1.65:9999/#/player?provisioning=DEIN_TOKEN
+```
+
+### 3. Pi starten
+
+Beim ersten Start oeffnet FullPageOS direkt den Player. Der Provisioning-Link wird automatisch eingelost und der Screen erscheint im Dashboard.
+
+## Fallback: klassisches PIN-Pairing
+
+Falls du keinen Installer nutzen willst, kannst du weiterhin manuell koppeln:
+
+1. Oeffne `/#/player` auf dem Pi.
+2. Warte auf den Pairing-Code.
+3. Gehe im Dashboard zu `Screens`.
+4. Bestaetige dort den Code.
+
+## Hinweise fuer den Betrieb
+
+- Ein Installer-Link ist einmalig und kann nach erfolgreichem Claim nicht erneut verwendet werden.
+- Abgelaufene oder bereits verbrauchte Installer liefern keinen neuen Screen mehr.
+- Bei Netzwerkproblemen kann der Player spaeter trotzdem mit lokalem Offline-Cache weiterlaufen, sobald er einmal erfolgreich synchronisiert wurde.
+- Remote-Kommandos wie Reboot, Browser-Neustart, Rotation, Systemlautstaerke und Screenshot-Capture funktionieren nur mit dem Raspberry-Pi-OS-Installer inklusive Agent, nicht mit reinem FullPageOS-Link.
+- OTA im aktuellen Stand aktualisiert Device-Agent und Launcher der Signage-App. Vollstaendige OS-/Paket-Upgrades sind noch nicht Teil des Workflows.
