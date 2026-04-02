@@ -394,7 +394,7 @@ function PlaylistsPage() {
                           <span className={`badge badge-${item.type}`}>{item.type}</span>
                         </div>
                         <div className="entity-meta">
-                          Quelle: {item.source_playlist_name || 'Direkt'} · Dauer {item.type === 'video' ? 'Video-Ende' : `${item.effective_duration}s`}
+                          Quelle: {item.source_playlist_name || 'Direkt'} | Dauer {item.type === 'video' ? 'Video-Ende' : `${item.effective_duration}s`}
                         </div>
                         {item.url ? <div className="muted-small">{truncate(item.url, 90)}</div> : null}
                         {item.content ? <div className="muted-small">{truncate(item.content, 90)}</div> : null}

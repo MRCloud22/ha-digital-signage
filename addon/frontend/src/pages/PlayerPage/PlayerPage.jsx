@@ -578,8 +578,13 @@ function PlayerPage() {
   const lastRuntimeErrorSignatureRef = useRef(null);
   const lastSyncWarningSignatureRef = useRef(null);
   const lastSyncSignatureRef = useRef(null);
+  const lastRendererRuntimeSignatureRef = useRef(null);
+  const offlineSyncRef = useRef({ signature: null, promise: null });
   const setupAttemptRef = useRef(null);
   const processingCommandsRef = useRef(false);
+  const runtimeRef = useRef(runtime);
+  const syncStateRef = useRef(syncState);
+  const playerVolumeRef = useRef(playerVolume);
 
   useEffect(() => {
     if (!bootstrapSession?.screenId || !bootstrapSession?.screenToken) return;
@@ -609,6 +614,18 @@ function PlayerPage() {
     localStorage.setItem(PLAYER_VOLUME_KEY, `${playerVolume}`);
   }, [playerVolume]);
 
+  useEffect(() => {
+    runtimeRef.current = runtime;
+  }, [runtime]);
+
+  useEffect(() => {
+    syncStateRef.current = syncState;
+  }, [syncState]);
+
+  useEffect(() => {
+    playerVolumeRef.current = playerVolume;
+  }, [playerVolume]);
+
   const clearStoredSession = useCallback(() => {
     localStorage.removeItem('screen_token');
     localStorage.removeItem('screen_id');
@@ -620,6 +637,10 @@ function PlayerPage() {
     setSyncState(buildInitialSyncState());
     setSetupMode(readProvisioningTokenFromLocation() ? 'provisioning' : 'pairing');
     setSetupNotice('');
+    runtimeRef.current = null;
+    syncStateRef.current = buildInitialSyncState();
+    lastRendererRuntimeSignatureRef.current = null;
+    offlineSyncRef.current = { signature: null, promise: null };
     hasLoadedRuntimeRef.current = false;
     lastSyncSignatureRef.current = null;
     setupAttemptRef.current = null;
@@ -702,29 +723,34 @@ function PlayerPage() {
     });
   }, []);
 
-  const buildBrowserHealthPayload = useCallback(() => ({
-    playerVersion: PLAYER_VERSION,
-    capabilities: ['refresh_runtime', 'reload_player', 'clear_offline_cache', 'restart_pairing', 'set_player_volume'],
-    reportedAt: new Date().toISOString(),
-    health: {
-      playerVolume,
-      online: navigator.onLine,
-      language: navigator.language,
-      platform: navigator.platform,
-      userAgent: navigator.userAgent,
-      hardwareConcurrency: navigator.hardwareConcurrency || null,
-      deviceMemory: navigator.deviceMemory || null,
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
+  const buildBrowserHealthPayload = useCallback(() => {
+    const currentRuntime = runtimeRef.current;
+    const currentSyncState = syncStateRef.current;
+
+    return {
+      playerVersion: PLAYER_VERSION,
+      capabilities: ['refresh_runtime', 'reload_player', 'clear_offline_cache', 'restart_pairing', 'set_player_volume'],
+      reportedAt: new Date().toISOString(),
+      health: {
+        playerVolume: playerVolumeRef.current,
+        online: navigator.onLine,
+        language: navigator.language,
+        platform: navigator.platform,
+        userAgent: navigator.userAgent,
+        hardwareConcurrency: navigator.hardwareConcurrency || null,
+        deviceMemory: navigator.deviceMemory || null,
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+        visibilityState: document.visibilityState,
+        syncMode: currentSyncState?.mode || 'idle',
+        usingCachedRuntime: !!currentSyncState?.usingCachedRuntime,
+        runtimeMode: currentRuntime?.effective?.mode || 'none',
+        runtimeSource: currentRuntime?.effective?.source || 'none',
       },
-      visibilityState: document.visibilityState,
-      syncMode: syncState?.mode || 'idle',
-      usingCachedRuntime: !!syncState?.usingCachedRuntime,
-      runtimeMode: runtime?.effective?.mode || 'none',
-      runtimeSource: runtime?.effective?.source || 'none',
-    },
-  }), [playerVolume, runtime, syncState]);
+    };
+  }, []);
 
   const reportDeviceHealth = useCallback(async (screenIdValue = screenId, tokenValue = screenToken) => {
     if (!screenIdValue || !tokenValue) return;
@@ -779,79 +805,104 @@ function PlayerPage() {
 
     const runtimeSignature = buildRuntimeSyncSignature(runtimeValue);
     const currentSyncState = readSyncState(screenIdValue);
+    if (offlineSyncRef.current.signature === runtimeSignature && offlineSyncRef.current.promise) {
+      return offlineSyncRef.current.promise;
+    }
     if (lastSyncSignatureRef.current === runtimeSignature && currentSyncState?.mode === 'ready' && !currentSyncState?.usingCachedRuntime) {
       return;
     }
     lastSyncSignatureRef.current = runtimeSignature;
 
-    const syncStartedAt = new Date().toISOString();
-    const syncingState = {
-      ...(currentSyncState || buildInitialSyncState()),
-      mode: 'syncing',
-      usingCachedRuntime: false,
-      cachedRuntimeAt: syncStartedAt,
-    };
-
-    setSyncState(syncingState);
-    writeSyncState(screenIdValue, syncingState);
-
-    const playlistIds = derivePlaylistIdsFromRuntime(runtimeValue);
-    const assetUrls = new Set();
-    let previewFallbackCount = 0;
-
-    for (const playlistId of playlistIds) {
+    const syncPromise = (async () => {
       try {
-        const response = await axios.get(`${API_URL}/playlists/${playlistId}/preview`);
-        writeCachedPreview(playlistId, response.data);
-        deriveAssetUrlsFromPreview(response.data).forEach((url) => assetUrls.add(url));
-      } catch {
-        const cachedPreviewRecord = readCachedPreview(playlistId);
-        if (cachedPreviewRecord?.value) {
-          previewFallbackCount += 1;
-          deriveAssetUrlsFromPreview(cachedPreviewRecord.value).forEach((url) => assetUrls.add(url));
+        const syncStartedAt = new Date().toISOString();
+        const syncingState = {
+          ...(currentSyncState || buildInitialSyncState()),
+          mode: 'syncing',
+          usingCachedRuntime: false,
+          cachedRuntimeAt: syncStartedAt,
+        };
+
+        setSyncState(syncingState);
+        writeSyncState(screenIdValue, syncingState);
+
+        const playlistIds = derivePlaylistIdsFromRuntime(runtimeValue);
+        const assetUrls = new Set();
+        let previewFallbackCount = 0;
+
+        for (const playlistId of playlistIds) {
+          try {
+            const response = await axios.get(`${API_URL}/playlists/${playlistId}/preview`);
+            writeCachedPreview(playlistId, response.data);
+            deriveAssetUrlsFromPreview(response.data).forEach((url) => assetUrls.add(url));
+          } catch {
+            const cachedPreviewRecord = readCachedPreview(playlistId);
+            if (cachedPreviewRecord?.value) {
+              previewFallbackCount += 1;
+              deriveAssetUrlsFromPreview(cachedPreviewRecord.value).forEach((url) => assetUrls.add(url));
+            }
+          }
         }
-      }
-    }
 
-    const prefetchResults = await prefetchMediaAssets([...assetUrls]);
-    const failedAssetCount = prefetchResults.filter((entry) => !entry.ok).length;
+        const prefetchResults = await prefetchMediaAssets([...assetUrls]);
+        const failedAssetCount = prefetchResults.filter((entry) => !entry.ok).length;
 
-    if (previewFallbackCount === 0) {
-      await pruneMediaCache([...assetUrls]);
-    }
+        if (previewFallbackCount === 0) {
+          await pruneMediaCache([...assetUrls]);
+        }
 
-    const nextState = {
-      mode: 'ready',
-      lastSyncedAt: syncStartedAt,
-      cachedRuntimeAt: syncStartedAt,
-      playlistCount: playlistIds.length,
-      assetCount: assetUrls.size,
-      cachedAssetCount: prefetchResults.filter((entry) => entry.ok).length,
-      failedAssetCount,
-      previewFallbackCount,
-      usingCachedRuntime: false,
-    };
-
-    setSyncState(nextState);
-    writeSyncState(screenIdValue, nextState);
-
-    if (failedAssetCount > 0 || previewFallbackCount > 0) {
-      const signature = `${failedAssetCount}:${previewFallbackCount}:${playlistIds.length}`;
-      if (lastSyncWarningSignatureRef.current !== signature) {
-        lastSyncWarningSignatureRef.current = signature;
-        reportPlayerEvent('warning', 'offline-cache', 'Offline-Sync ist unvollstaendig.', {
+        const nextState = {
+          mode: 'ready',
+          lastSyncedAt: syncStartedAt,
+          cachedRuntimeAt: syncStartedAt,
           playlistCount: playlistIds.length,
           assetCount: assetUrls.size,
+          cachedAssetCount: prefetchResults.filter((entry) => entry.ok).length,
           failedAssetCount,
           previewFallbackCount,
+          usingCachedRuntime: false,
+        };
+
+        setSyncState(nextState);
+        writeSyncState(screenIdValue, nextState);
+
+        if (failedAssetCount > 0 || previewFallbackCount > 0) {
+          const signature = `${failedAssetCount}:${previewFallbackCount}:${playlistIds.length}`;
+          if (lastSyncWarningSignatureRef.current !== signature) {
+            lastSyncWarningSignatureRef.current = signature;
+            reportPlayerEvent('warning', 'offline-cache', 'Offline-Sync ist unvollstaendig.', {
+              playlistCount: playlistIds.length,
+              assetCount: assetUrls.size,
+              failedAssetCount,
+              previewFallbackCount,
+            });
+          }
+        } else {
+          lastSyncWarningSignatureRef.current = null;
+        }
+      } catch (error) {
+        reportPlayerEvent('warning', 'offline-cache', 'Offline-Sync konnte nicht abgeschlossen werden.', {
+          message: error instanceof Error ? error.message : 'sync_failed',
+          runtimeSignature,
         });
+      } finally {
+        if (offlineSyncRef.current.signature === runtimeSignature) {
+          offlineSyncRef.current = { signature: null, promise: null };
+        }
       }
-    } else {
-      lastSyncWarningSignatureRef.current = null;
-    }
+    })();
+
+    offlineSyncRef.current = {
+      signature: runtimeSignature,
+      promise: syncPromise,
+    };
+
+    return syncPromise;
   }, [reportPlayerEvent]);
 
-  const fetchRuntime = useCallback(async () => {
+  const fetchRuntime = useCallback(async (options = {}) => {
+    const { refreshRenderer = false } = options;
+
     if (!screenId) {
       setLoading(false);
       return;
@@ -863,9 +914,17 @@ function PlayerPage() {
       }
 
       const response = await axios.get(`${API_URL}/screens/${screenId}/runtime`);
-      writeCachedRuntime(screenId, response.data);
-      setRuntime(response.data);
-      setRuntimeVersion((value) => value + 1);
+      const nextRuntime = response.data;
+      const runtimeSignature = buildRuntimeSyncSignature(nextRuntime);
+      const shouldRefreshRenderer = refreshRenderer || lastRendererRuntimeSignatureRef.current !== runtimeSignature;
+
+      writeCachedRuntime(screenId, nextRuntime);
+      setRuntime(nextRuntime);
+      runtimeRef.current = nextRuntime;
+      if (shouldRefreshRenderer) {
+        setRuntimeVersion((value) => value + 1);
+      }
+      lastRendererRuntimeSignatureRef.current = runtimeSignature;
       hasLoadedRuntimeRef.current = true;
       lastRuntimeErrorSignatureRef.current = null;
       setSyncState((current) => ({
@@ -875,15 +934,23 @@ function PlayerPage() {
         cachedRuntimeAt: new Date().toISOString(),
       }));
       await flushPendingEvents(screenId, screenToken);
-      void syncRuntimeOfflineData(screenId, response.data);
+      void syncRuntimeOfflineData(screenId, nextRuntime);
     } catch (error) {
       if (error.response?.status === 404) {
         clearStoredSession();
       } else {
         const cachedRuntimeRecord = readCachedRuntime(screenId);
         if (cachedRuntimeRecord?.value) {
-          setRuntime(cachedRuntimeRecord.value);
-          setRuntimeVersion((value) => value + 1);
+          const nextRuntime = cachedRuntimeRecord.value;
+          const runtimeSignature = buildRuntimeSyncSignature(nextRuntime);
+          const shouldRefreshRenderer = refreshRenderer || lastRendererRuntimeSignatureRef.current !== runtimeSignature;
+
+          setRuntime(nextRuntime);
+          runtimeRef.current = nextRuntime;
+          if (shouldRefreshRenderer) {
+            setRuntimeVersion((value) => value + 1);
+          }
+          lastRendererRuntimeSignatureRef.current = runtimeSignature;
           hasLoadedRuntimeRef.current = true;
 
           const fallbackState = {
@@ -917,11 +984,11 @@ function PlayerPage() {
   const executePlayerCommand = useCallback(async (command) => {
     switch (command.command_type) {
       case 'refresh_runtime':
-        await fetchRuntime();
+        await fetchRuntime({ refreshRenderer: true });
         return {
           message: 'Runtime wurde neu geladen.',
           result: {
-            runtimeMode: runtime?.effective?.mode || 'none',
+            runtimeMode: runtimeRef.current?.effective?.mode || 'none',
           },
         };
       case 'reload_player':
@@ -934,8 +1001,9 @@ function PlayerPage() {
         await clearOfflineCaches();
         setSyncState(buildInitialSyncState());
         lastSyncSignatureRef.current = null;
+        lastRendererRuntimeSignatureRef.current = null;
         hasLoadedRuntimeRef.current = false;
-        await fetchRuntime();
+        await fetchRuntime({ refreshRenderer: true });
         return {
           message: 'Offline-Cache wurde geloescht.',
           result: {
@@ -960,7 +1028,7 @@ function PlayerPage() {
       default:
         throw new Error(`Unsupported player command: ${command.command_type}`);
     }
-  }, [fetchRuntime, playerVolume, runtime, screenId]);
+  }, [fetchRuntime, playerVolume, screenId]);
 
   const processPendingPlayerCommands = useCallback(async (screenIdValue = screenId, tokenValue = screenToken) => {
     if (!screenIdValue || !tokenValue || processingCommandsRef.current) return;
@@ -1156,9 +1224,15 @@ function PlayerPage() {
       await processPendingPlayerCommands(screenId, screenToken);
     });
 
-    socket.on('playlist_changed', fetchRuntime);
-    socket.on('layout_changed', fetchRuntime);
-    socket.on('runtime_changed', fetchRuntime);
+    socket.on('playlist_changed', () => {
+      void fetchRuntime({ refreshRenderer: true });
+    });
+    socket.on('layout_changed', () => {
+      void fetchRuntime({ refreshRenderer: true });
+    });
+    socket.on('runtime_changed', () => {
+      void fetchRuntime({ refreshRenderer: true });
+    });
     socket.on('device_command_available', async (payload) => {
       if (payload?.target && payload.target !== 'player') return;
       await processPendingPlayerCommands(screenId, screenToken);

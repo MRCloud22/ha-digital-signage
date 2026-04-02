@@ -3350,6 +3350,52 @@ app.post('/api/media/text', async (req, res) => {
     });
 });
 
+app.put('/api/media/:id', async (req, res) => {
+    const existing = await dbGet(db, `SELECT * FROM media WHERE id = ?`, [req.params.id]);
+    if (!existing) {
+        return jsonError(res, 404, 'Media not found');
+    }
+
+    if (existing.type !== 'webpage') {
+        return jsonError(res, 400, 'Only webpage media can currently be edited.');
+    }
+
+    const name = normalizeText(req.body?.name);
+    const url = normalizeText(req.body?.url);
+
+    if (!name || !url) {
+        return jsonError(res, 400, 'Name and URL are required.');
+    }
+
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch (error) {
+        return jsonError(res, 400, 'URL is invalid.');
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return jsonError(res, 400, 'Only http and https URLs are supported.');
+    }
+
+    const duration = clampNumber(req.body?.duration ?? existing.duration ?? 30, 1, 86400, existing.duration ?? 30);
+
+    await dbRun(
+        db,
+        `UPDATE media
+         SET name = ?, url = ?, duration = ?
+         WHERE id = ?`,
+        [name, parsed.toString(), duration, req.params.id]
+    );
+
+    const updated = await dbGet(db, `SELECT * FROM media WHERE id = ?`, [req.params.id]);
+
+    io.emit('playlist_changed');
+    io.emit('runtime_changed');
+
+    res.json(sanitizeMedia(updated));
+});
+
 app.delete('/api/media/:id', async (req, res) => {
     const media = await dbGet(db, `SELECT filepath FROM media WHERE id = ?`, [req.params.id]);
     if (!media) {

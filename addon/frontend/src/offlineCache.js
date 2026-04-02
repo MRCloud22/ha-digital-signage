@@ -68,7 +68,10 @@ export function clearOfflineStorage(screenId = null) {
     const key = localStorage.key(index);
     if (!key) continue;
 
-    if (screenId && (key === `${RUNTIME_CACHE_PREFIX}${screenId}` || key === `${SYNC_STATE_PREFIX}${screenId}`)) {
+    if (
+      (screenId && (key === `${RUNTIME_CACHE_PREFIX}${screenId}` || key === `${SYNC_STATE_PREFIX}${screenId}`))
+      || (!screenId && (key.startsWith(RUNTIME_CACHE_PREFIX) || key.startsWith(SYNC_STATE_PREFIX)))
+    ) {
       keysToDelete.push(key);
       continue;
     }

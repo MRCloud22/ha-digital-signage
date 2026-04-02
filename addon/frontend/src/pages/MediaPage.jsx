@@ -5,6 +5,7 @@ import {
   Globe,
   Image as ImageIcon,
   Link as LinkIcon,
+  PenSquare,
   Search,
   Trash2,
   Type,
@@ -23,6 +24,7 @@ function MediaPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isWebModalOpen, setIsWebModalOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [editingWebMedia, setEditingWebMedia] = useState(null);
 
   const [file, setFile] = useState(null);
   const [uploadName, setUploadName] = useState('');
@@ -58,6 +60,31 @@ function MediaPage() {
     fetchMedia();
   });
 
+  const resetWebForm = () => {
+    setEditingWebMedia(null);
+    setWebName('');
+    setWebUrl('');
+    setWebDuration(30);
+  };
+
+  const closeWebModal = () => {
+    setIsWebModalOpen(false);
+    resetWebForm();
+  };
+
+  const openWebCreateModal = () => {
+    resetWebForm();
+    setIsWebModalOpen(true);
+  };
+
+  const openWebEditModal = (item) => {
+    setEditingWebMedia(item);
+    setWebName(item.name || '');
+    setWebUrl(item.url || '');
+    setWebDuration(Number(item.duration) || 30);
+    setIsWebModalOpen(true);
+  };
+
   useEffect(() => {
     fetchMediaEffect();
   }, []);
@@ -90,23 +117,28 @@ function MediaPage() {
     }
   };
 
-  const handleWebAdd = async (event) => {
+  const handleWebSave = async (event) => {
     event.preventDefault();
     if (!webName || !webUrl) return;
 
     try {
-      await axios.post(`${API_URL}/media/web`, {
-        name: webName,
-        url: webUrl,
-        duration: webDuration,
-      });
-      setWebName('');
-      setWebUrl('');
-      setWebDuration(30);
-      setIsWebModalOpen(false);
+      if (editingWebMedia) {
+        await axios.put(`${API_URL}/media/${editingWebMedia.id}`, {
+          name: webName,
+          url: webUrl,
+          duration: webDuration,
+        });
+      } else {
+        await axios.post(`${API_URL}/media/web`, {
+          name: webName,
+          url: webUrl,
+          duration: webDuration,
+        });
+      }
+      closeWebModal();
       await fetchMedia();
     } catch (error) {
-      console.error('Failed to add webpage', error);
+      console.error('Failed to save webpage', error);
     }
   };
 
@@ -171,7 +203,7 @@ function MediaPage() {
             <Type size={18} />
             Text-Slide
           </button>
-          <button className="btn btn-secondary" onClick={() => setIsWebModalOpen(true)}>
+          <button className="btn btn-secondary" onClick={openWebCreateModal}>
             <Globe size={18} />
             Webseite
           </button>
@@ -228,6 +260,11 @@ function MediaPage() {
                 <div className="media-card-footer">
                   <span>{item.type === 'video' ? 'Bis Video-Ende' : `${item.duration || 0}s`}</span>
                   <div className="row-actions">
+                    {item.type === 'webpage' ? (
+                      <button className="btn-icon" onClick={() => openWebEditModal(item)} title="Webseite bearbeiten">
+                        <PenSquare size={16} />
+                      </button>
+                    ) : null}
                     {item.url ? (
                       <a className="btn-icon" href={item.url} target="_blank" rel="noreferrer">
                         <LinkIcon size={16} />
@@ -295,8 +332,8 @@ function MediaPage() {
       {isWebModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content modal-narrow">
-            <h3>Webseite hinzufuegen</h3>
-            <form onSubmit={handleWebAdd}>
+            <h3>{editingWebMedia ? 'Webseite bearbeiten' : 'Webseite hinzufuegen'}</h3>
+            <form onSubmit={handleWebSave}>
               <div className="form-group">
                 <label>Name</label>
                 <input className="form-control" value={webName} onChange={(event) => setWebName(event.target.value)} required />
@@ -316,11 +353,11 @@ function MediaPage() {
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsWebModalOpen(false)}>
+                <button type="button" className="btn btn-secondary" onClick={closeWebModal}>
                   Abbrechen
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Speichern
+                  {editingWebMedia ? 'Aktualisieren' : 'Speichern'}
                 </button>
               </div>
             </form>
